@@ -59,7 +59,7 @@ jobs:
         env:
           VERSION: ${{ needs.get-version.outputs.tag }}
         run: |
-          dotnet build --configuration Release --no-restore -p:NuGetVersion=${VERSION:1}
+          dotnet build --configuration Release --no-restore -p:Version=${VERSION:1}
 
       - name: Add NuGet source
         env:
