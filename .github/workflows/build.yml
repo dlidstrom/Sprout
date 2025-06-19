@@ -69,10 +69,10 @@ jobs:
 
 
       - name: list files
-        run: ls -la bin/Release/net9.0
+        run: ls -la bin/Release
 
       - name: Publish package
         env:
           VERSION: ${{ needs.get-version.outputs.tag }}
           API_KEY: ${{ secrets.NUGET_PASSWORD }}
-        run: dotnet nuget push "bin/Release/net9.0/Sprout.${VERSION:1}.nupkg" --api-key ${API_KEY} --source nuget --skip-duplicate
+        run: dotnet nuget push "bin/Release/Sprout.${VERSION:1}.nupkg" --api-key ${API_KEY} --source nuget --skip-duplicate
