@@ -67,6 +67,10 @@ jobs:
           NUGET_PASSWORD: ${{ secrets.NUGET_PASSWORD }}
         run: dotnet nuget add source --username ${NUGET_USERNAME} --password ${NUGET_PASSWORD} --store-password-in-clear-text --name nuget "https://nuget.pkg.github.com/${NUGET_USERNAME}/index.json"
 
+
+      - name: list files
+        run: ls -la bin/Release/net9.0
+
       - name: Publish package
         env:
           VERSION: ${{ needs.get-version.outputs.tag }}
