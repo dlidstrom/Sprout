@@ -7,12 +7,23 @@
     <PackageId>Sprout</PackageId>
     <Version>0.0.1-dev</Version>
     <Title>Sprout: BDD Testing for F#</Title>
-    <Description>Sprout is a Behavior-Driven Development (BDD) testing framework for F# that allows you to write tests in a natural language style, making it easier to understand and maintain.</<Description>
+    <Description>Sprout is a Behavior-Driven Development (BDD) testing framework for F# that allows you to write tests in a natural language style, making it easier to understand and maintain.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/dlidstrom/Sprout</PackageProjectUrl>
-    <PackageIcon>sprout.png</PackageIcon>
+    <PackageIcon>logo.png</PackageIcon>
     <Authors>Daniel Lidström</Authors>
+    <DebugType>embedded</DebugType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.Github" Version="8.0.0" PrivateAssets="All" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Include="Sprout.fs" />
@@ -20,6 +31,8 @@
 
   <ItemGroup>
     <None Include="Readme.md" Pack="true" PackagePath="\" />
+    <None Include="sprout.png" Pack="true" PackagePath="\" />
+    <None Include="logo.png" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
