@@ -96,11 +96,67 @@ type TestResult =
   | Failed of Path * string * exn
   | Pending of Path * string
 
+type ITestReporter =
+  abstract BeginSuite : name:string * level:int -> unit
+  abstract ReportResult : result:TestResult * level:int -> unit
+  abstract EndSuite : name:string * level:int -> unit
+  abstract Info : message:string * indent:string * indentCount:int -> unit
+  abstract Debug : message:string * indent:string * indentCount:int -> unit
+  abstract End : TestResult list -> unit
+
+type ConsoleReporter() =
+  let sw = Stopwatch.StartNew()
+  interface ITestReporter with
+    member _.BeginSuite(name, level) =
+      let indent = String.replicate (level * 2) " "
+      printfn $"{indent}{AnsiColours.green}{name}{AnsiColours.reset}"
+
+    member _.ReportResult(result, level) =
+      let indent = String.replicate (level * 2) " "
+      match result with
+      | Passed (_, name) ->
+          printfn $"%s{indent}%s{AnsiColours.green}  ✅ passed: %s{name}%s{AnsiColours.reset}"
+      | Failed (_, name, ex) ->
+          printfn $"%s{indent}%s{AnsiColours.red}  ❌ failed: %s{name} - %s{ex.Message}%s{AnsiColours.reset}"
+      | Pending (_, name) ->
+          printfn $"%s{indent}%s{AnsiColours.grey}  ❔ pending: %s{name}%s{AnsiColours.reset}"
+
+    member _.EndSuite(_, _) = ()
+    member _.Debug(message: string, indent: string, indentCount: int): unit =
+      let indent = String.replicate (indentCount * 2) indent
+      printfn $"%s{indent}%s{AnsiColours.grey}%s{message}%s{AnsiColours.reset}"
+    member _.Info(message: string, indent: string, indentCount: int): unit =
+      let indent = String.replicate (indentCount * 2) indent
+      printfn $"%s{indent}%s{AnsiColours.grey}%s{message}%s{AnsiColours.reset}"
+    member _.End(testResults: TestResult list): unit =
+      printfn $"got %d{List.length testResults} test results"
+      testResults |> List.iter (function
+        // | Passed (path, name) ->
+        //   let pathString = String.concat " / " path.Value
+        //   context.Log $"Test passed: %s{AnsiColours.green}%s{pathString} - %s{name}%s{AnsiColours.reset}"
+        | Failed (path, name, ex) ->
+          let pathString = String.concat " / " path.Value
+          printfn $"Test failed: %s{AnsiColours.red}%s{pathString} / %s{name} - %s{ex.Message}%s{AnsiColours.reset}"
+        // | Pending (path, name) ->
+        //   let pathString = String.concat " / " path.Value
+        //   context.Log $"Test pending: %s{AnsiColours.grey}%s{pathString} / %s{name}%s{AnsiColours.reset}")
+        | _ -> ())
+
+      // Count results
+      let passedCount = testResults |> List.filter (function Passed _ -> true | _ -> false) |> List.length
+      let failedCount = testResults |> List.filter (function Failed _ -> true | _ -> false) |> List.length
+      let pendingCount = testResults |> List.filter (function Pending _ -> true | _ -> false) |> List.length
+
+      printfn $"Summary: {passedCount} passed, {failedCount} failed, {pendingCount} pending"
+      printfn $"Total time: %s{sw.Elapsed.ToString()}"
+
 type TestContext = {
   Path: Path
   ParentBeforeHooks: HookFunction list
   ParentAfterHooks: HookFunction list
-  IndentString: string
+  Reporter: ITestReporter
+  Indent: string
+  IndentCount: int
   Log: string -> unit
 }
 with
@@ -108,7 +164,9 @@ with
     Path = Path []
     ParentBeforeHooks = []
     ParentAfterHooks = []
-    IndentString = " "
+    Indent = " "
+    IndentCount = 2
+    Reporter = ConsoleReporter() :> ITestReporter
     Log = printfn "%s"
   }
 
@@ -125,20 +183,18 @@ let runTestCase path (testCase: It): TestResult =
   | None ->
     Pending (path, testCase.Name)
 
-let rec doRunTestSuite (sb: Describe) (context: TestContext) =
-  let indentStr = String.replicate context.Path.Length context.IndentString
-
+let rec doRunTestSuite (suite: Describe) (context: TestContext) =
   // setup logging functions
   let info', debug' = info, debug
   use _ = { new System.IDisposable with
     member _.Dispose() = info <- info'; debug <- debug' }
-  info <- fun s -> context.Log $"%s{indentStr}%s{s}"
-  debug <- fun s -> context.Log $"%s{indentStr}%s{AnsiColours.grey}%s{s}%s{AnsiColours.reset}"
+  info <- fun s -> context.Reporter.Info(s, context.Indent, context.IndentCount)
+  debug <- fun s -> context.Reporter.Debug(s, context.Indent, context.IndentCount)
 
-  info $"%s{indentStr}%s{sb.Name}"
+  context.Reporter.BeginSuite(suite.Name, context.IndentCount)
 
   let beforeHooks, afterHooks =
-    sb.Each
+    suite.Each
     |> List.fold (fun (be, af) hook ->
       match hook with
       | Before hookFunction -> hookFunction :: be, af
@@ -148,23 +204,17 @@ let rec doRunTestSuite (sb: Describe) (context: TestContext) =
   let afterHooks = context.ParentAfterHooks |> List.append (List.rev afterHooks)
 
   let testResults = [
-    for testCase in sb.TestCases do
+    for testCase in suite.TestCases do
       beforeHooks |> Seq.iter (fun hookFunction -> hookFunction())
       runTestCase context.Path testCase
       afterHooks |> Seq.iter (fun hookFunction -> hookFunction())
   ]
 
   for result in testResults do
-    match result with
-    | Passed (_, name) ->
-      context.Log $"%s{indentStr}%s{AnsiColours.green}  ✅ passed: %s{name}%s{AnsiColours.reset}"
-    | Failed (_, name, ex) ->
-      context.Log $"%s{indentStr}%s{AnsiColours.red}  ❌ failed: %s{name} - %s{ex.Message}%s{AnsiColours.reset}"
-    | Pending (_, name) ->
-      context.Log $"%s{indentStr}%s{AnsiColours.grey}  ❔ pending: %s{name}%s{AnsiColours.reset}"
+    context.Reporter.ReportResult(result, context.Path.Length)
 
   let childrenResults =
-    sb.Children
+    suite.Children
     |> List.map (fun child ->
       let childContext =
         { context with
@@ -177,28 +227,9 @@ let rec doRunTestSuite (sb: Describe) (context: TestContext) =
   testResults @ List.concat childrenResults
 
 let runTestSuite (sb: Describe) (context: TestContext) =
-  let sw = Stopwatch.StartNew()
   let testResults = doRunTestSuite sb { context with Path = Path (context.Path.Value @ [sb.Name]) }
-  context.Log $"got %d{List.length testResults} test results"
-  testResults |> List.iter (function
-    // | Passed (path, name) ->
-    //   let pathString = String.concat " / " path.Value
-    //   context.Log $"Test passed: %s{AnsiColours.green}%s{pathString} - %s{name}%s{AnsiColours.reset}"
-    | Failed (path, name, ex) ->
-      let pathString = String.concat " / " path.Value
-      context.Log $"Test failed: %s{AnsiColours.red}%s{pathString} / %s{name} - %s{ex.Message}%s{AnsiColours.reset}"
-    // | Pending (path, name) ->
-    //   let pathString = String.concat " / " path.Value
-    //   context.Log $"Test pending: %s{AnsiColours.grey}%s{pathString} / %s{name}%s{AnsiColours.reset}")
-    | _ -> ())
-
-  // Count results
-  let passedCount = testResults |> List.filter (function Passed _ -> true | _ -> false) |> List.length
-  let failedCount = testResults |> List.filter (function Failed _ -> true | _ -> false) |> List.length
-  let pendingCount = testResults |> List.filter (function Pending _ -> true | _ -> false) |> List.length
-
-  context.Log $"Summary: {passedCount} passed, {failedCount} failed, {pendingCount} pending"
-  context.Log $"Total time: %s{sw.Elapsed.ToString()}"
+  context.Reporter.EndSuite(sb.Name, context.Path.Length)
+  context.Reporter.End testResults
   ()
 
 [<AutoOpen>]
