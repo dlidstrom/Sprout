@@ -52,6 +52,9 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
+      - name: Restore dependencies
+        run: dotnet restore
+
       - name: Build package
         env:
           VERSION: ${{ needs.get-version.outputs.tag }}
