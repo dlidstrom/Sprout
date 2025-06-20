@@ -62,38 +62,4 @@ runTestSuite suite
 
 Output:
 
-```txt
-A test suite
-Before each test
-This test passes
-After each test
-  ✅ passed: should pass
-Before each test
-This test fails
-After each test
-  ❌ failed: should fail - Intentional failure
-Before each test
-After each test
-  ❔ pending: This is a pending test
-  Nested suite
-  Before each test
-  Nested test passes
-  After each test
-    ✅ passed: should also pass
-  Arithmetic
-    Addition
-    Before each test
-    After each test
-      ✅ passed: should add two numbers correctly
-    Before each test
-    After each test
-      ✅ passed: should handle negative numbers
-    Faulty Addition
-    Before each test
-    After each test
-      ❌ failed: should fail when adding incorrect numbers - Expected 5 but got 4
-There were 2 test failures:
-- A larger test suite / should fail - Intentional failure
-- A larger test suite / Arithmetic / Faulty Addition / should fail when adding incorrect numbers - Expected 5 but got 4
-Summary: 4 passed, 2 failed, 1 pending
-```
+![output](out.png)
