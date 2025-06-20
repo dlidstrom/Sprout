@@ -7,22 +7,7 @@
 ```fsharp
 open Sprout
 
-let s1 = describe "Suite 1" {}
-let s2 = describe "Suite 2" {
-  beforeEach {
-    debug "Before each test in Suite 2"
-  }
-
-  it "should pass in Suite 2" {
-    info "This test passes in Suite 2"
-  }
-}
-
-// run collection of suites
-runTestSuite (describe "Main Suite" { s1; s2 })
-
-// larger suite example
-let suite = describe "A larger test suite" {
+let suite = describe "A test suite" {
   beforeEach {
     debug "Before each test"
   }
@@ -76,15 +61,7 @@ runTestSuite suite
 Output:
 
 ```txt
-Main Suite
-  Suite 1
-  Suite 2
-  Before each test in Suite 2
-  This test passes in Suite 2
-    ✅ passed: should pass in Suite 2
-All tests passed!
-Summary: 1 passed, 0 failed, 0 pending
-A larger test suite
+A test suite
 Before each test
 This test passes
 After each test
