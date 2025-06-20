@@ -10,8 +10,10 @@ on:
     branches: [main]
 
 permissions:
-  pull-requests: read
   contents: write
+  issues: write
+  checks: write
+  pull-requests: write
 
 jobs:
   get-version:
@@ -40,6 +42,9 @@ jobs:
           VERBOSE: true
   build:
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-build
+      cancel-in-progress: true
     needs: get-version
     steps:
       - name: Checkout
