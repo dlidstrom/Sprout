@@ -1,6 +1,8 @@
+<img src="logo.png" height="128" width="128" />
+
 # Sprout: BDD Testing for F#
 
-<img src="logo.png" height="128" width="128" />
+[![Build](https://github.com/dlidstrom/Sprout/actions/workflows/build.yml/badge.svg)](https://github.com/dlidstrom/Sprout/actions/workflows/build.yml)
 
 ## Usage
 
