@@ -52,6 +52,19 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
+      - name: Setup tools
+        run: |
+          npm install -g bats
+
+      - name: Tests
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5433
+        run: |
+          mkdir test-results
+          bats . --verbose-run --print-output-on-failure --report-formatter junit --output test-results
+          ls -lah test-results
+
       - name: Restore dependencies
         run: dotnet restore
 
