@@ -62,7 +62,8 @@ type DescribeBuilder(name) =
     { Describe.Empty name with Steps = [It tc] }
   member _.Yield(log: LogLevel) =
     { Describe.Empty name with Steps = [LogStatement log] }
-  member _.Yield(unit) = Describe.Empty name
+  member _.Yield(describe: Describe) =
+    { Describe.Empty name with Children = [describe] }
   member _.Combine(a, b) =
     {
       Describe.Empty name
@@ -79,18 +80,8 @@ type DescribeBuilder(name) =
       |> Seq.fold (fun s a -> this.Combine(s, a)) (Describe.Empty name)
     sb
   member _.Run(f: Describe) = f
-  [<CustomOperation("d_info")>]
-  member _.Info(state: Describe, message: string) : Describe =
-    { state with Steps = state.Steps @ [LogStatement (Info message)] }
-  [<CustomOperation("d_debug")>]
-  member _.Debug(state: Describe, message: string) : Describe =
-    { state with Steps = state.Steps @ [LogStatement (Debug message)] }
 
 let describe name = DescribeBuilder name
-
-let f = describe "logging test" {
-  d_info "This test logs information"
-}
 
 type LogState = { Messages: string list }
 
