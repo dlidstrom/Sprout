@@ -3,6 +3,7 @@
 open Sprout
 
 let suite = describe "A test suite" {
+  Info "Top level info message"
   it "should pass" {
     info "This test passes"
   }
@@ -15,7 +16,7 @@ let suite = describe "A test suite" {
   pending "This is a pending test"
 
   describe "Nested suite" {
-    info "Use beforeEach and afterEach for setup and teardown"
+    Debug "Use beforeEach and afterEach for setup and teardown"
     beforeEach {
       debug "Before each test"
     }

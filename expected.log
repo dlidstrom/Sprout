@@ -6,8 +6,9 @@
   [32m  ✅ passed: should pass in Suite 2[0m
 All tests passed!
 Summary: 1 passed, 0 failed, 0 pending
-Total time: 00:00:00.0045414
+Total time: 00:00:00.0046286
 [32mA larger test suite[0m
+[37mTop level info message[0m
 [90mBefore each test[0m
 [37mThis test passes[0m
 [90mAfter each test[0m
@@ -20,6 +21,7 @@ Total time: 00:00:00.0045414
 [90mAfter each test[0m
 [90m  ❔ pending: This is a pending test[0m
   [32mNested suite[0m
+  [90mUse beforeEach and afterEach for setup and teardown[0m
   [90mBefore each test[0m
   [37mNested test passes[0m
   [90mAfter each test[0m
@@ -40,4 +42,4 @@ There were 2 test failures:
 - [31mA larger test suite / should fail - Intentional failure[0m
 - [31mA larger test suite / Arithmetic / Faulty Addition / should fail when adding incorrect numbers - Expected 5 but got 4[0m
 Summary: 4 passed, 2 failed, 1 pending
-Total time: 00:00:00.0034939
+Total time: 00:00:00.0036246

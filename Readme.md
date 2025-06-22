@@ -7,17 +7,12 @@
 ## Usage
 
 ```fsharp
+#load "Sprout.fs"
+
 open Sprout
 
 let suite = describe "A test suite" {
-  beforeEach {
-    debug "Before each test"
-  }
-
-  afterEach {
-    debug "After each test"
-  }
-
+  Info "Top level info message"
   it "should pass" {
     info "This test passes"
   }
@@ -30,6 +25,14 @@ let suite = describe "A test suite" {
   pending "This is a pending test"
 
   describe "Nested suite" {
+    Debug "Use beforeEach and afterEach for setup and teardown"
+    beforeEach {
+      debug "Before each test"
+    }
+
+    afterEach {
+      debug "After each test"
+    }
     it "should also pass" {
       info "Nested test passes"
     }
@@ -41,23 +44,32 @@ let suite = describe "A test suite" {
         let result = 2 + 2
         result |> shouldEqual 4
       }
-
-      it "should handle negative numbers" {
-        let result = -1 + -1
-        result |> shouldEqual -2
-      }
     }
 
-    describe "Faulty Addition" {
-      it "should fail when adding incorrect numbers" {
-        let result = 2 + 2
-        result |> shouldEqual 5
+    describe "Multiplication" {
+      it "should multiply two numbers correctly" {
+        let result = 3 * 3
+        result |> shouldEqual 9
       }
     }
   }
-}
 
-runTestSuite suite
+  describe "Comparisons" {
+    debug "Testing comparisons"
+    it "should compare numbers correctly" {
+      5 > 3 |> shouldBeTrue
+    }
+  }
+
+  describe "Parameterized Tests" {
+    info "Simply embed test cases and loop over them"
+    let numbers = [1; 2; 3; 4; 5]
+    for n in numbers do
+      it $"should handle number {n}" {
+        n > 0 |> shouldBeTrue
+      }
+  }
+}
 ```
 
 Output:
