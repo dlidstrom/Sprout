@@ -5,6 +5,7 @@ let mutable debug: string -> unit = ignore
 
 type HookFunction = unit -> unit
 type EachFunction = Before of f: HookFunction | After of f: HookFunction
+type LogLevel = Debug of string | Info of string
 
 type EachBuilder(factory: (unit -> unit) -> EachFunction) =
   member _.Zero() = ()
@@ -35,16 +36,20 @@ type ItBuilder(name: string) =
 let it name = ItBuilder name
 let pending name = It.Pending name
 
+type DescribeStep =
+  | It of It
+  | LogStatement of LogLevel
+
 type Describe = {
   Name: string
-  TestCases: It list
+  Steps: DescribeStep list
   Each: EachFunction list
   Children: Describe list
 }
 with
   static member Empty name = {
     Name = name
-    TestCases = []
+    Steps = []
     Each = []
     Children = []
   }
@@ -54,16 +59,17 @@ type DescribeBuilder(name) =
   member _.Yield(each: EachFunction) =
     { Describe.Empty name with Each = [each] }
   member _.Yield(tc: It) =
-    { Describe.Empty name with TestCases = [tc] }
-  member _.Yield(sub: Describe) =
-    { Describe.Empty name with Children = [sub] }
+    { Describe.Empty name with Steps = [It tc] }
+  member _.Yield(log: LogLevel) =
+    { Describe.Empty name with Steps = [LogStatement log] }
+  member _.Yield(unit) = Describe.Empty name
   member _.Combine(a, b) =
     {
       Describe.Empty name
       with
         Each = a.Each @ b.Each
         Children = a.Children @ b.Children
-        TestCases = a.TestCases @ b.TestCases
+        Steps = a.Steps @ b.Steps
     }
   member _.Delay(f: unit -> Describe) = f()
   member this.For(sequence: seq<'T>, body: 'T -> Describe) =
@@ -73,8 +79,20 @@ type DescribeBuilder(name) =
       |> Seq.fold (fun s a -> this.Combine(s, a)) (Describe.Empty name)
     sb
   member _.Run(f: Describe) = f
+  [<CustomOperation("d_info")>]
+  member _.Info(state: Describe, message: string) : Describe =
+    { state with Steps = state.Steps @ [LogStatement (Info message)] }
+  [<CustomOperation("d_debug")>]
+  member _.Debug(state: Describe, message: string) : Describe =
+    { state with Steps = state.Steps @ [LogStatement (Debug message)] }
 
 let describe name = DescribeBuilder name
+
+let f = describe "logging test" {
+  d_info "This test logs information"
+}
+
+type LogState = { Messages: string list }
 
 type Path = Path of string list
 with
@@ -107,9 +125,13 @@ module Reporters =
     let white = "\u001b[37m"
     let reset = "\u001b[0m"
 
-  type ConsoleReporter() =
+  type ConsoleReporter(passedChar, failedChar, pendingChar) =
     let sw = Stopwatch.StartNew()
     let indent (path: Path) = String.replicate ((path.Length - 1) * 2) " "
+
+    new() =
+      ConsoleReporter("✅", "❌", "❔")
+
     interface ITestReporter with
       member _.BeginSuite(name, path) =
         let indent = indent path
@@ -119,11 +141,11 @@ module Reporters =
         let indent = indent path
         match result with
         | Passed (_, name) ->
-            printfn $"%s{indent}%s{AnsiColours.green}  ✅ passed: %s{name}%s{AnsiColours.reset}"
+            printfn $"%s{indent}%s{AnsiColours.green}  %s{passedChar} passed: %s{name}%s{AnsiColours.reset}"
         | Failed (_, name, ex) ->
-            printfn $"%s{indent}%s{AnsiColours.red}  ❌ failed: %s{name} - %s{ex.Message}%s{AnsiColours.reset}"
+            printfn $"%s{indent}%s{AnsiColours.red}  %s{failedChar} failed: %s{name} - %s{ex.Message}%s{AnsiColours.reset}"
         | Pending (_, name) ->
-            printfn $"%s{indent}%s{AnsiColours.grey}  ❔ pending: %s{name}%s{AnsiColours.reset}"
+            printfn $"%s{indent}%s{AnsiColours.grey}  %s{pendingChar} pending: %s{name}%s{AnsiColours.reset}"
 
       member _.EndSuite(_, _) = ()
       member _.Debug(message: string, path: Path): unit =
@@ -169,7 +191,6 @@ with
   }
 
 type TestSuiteRunner = Describe -> TestContext -> unit
-type private LogLevel = Debug of string | Info of string
 
 let private runTestCase path (testCase: It) beforeHooks afterHooks =
   // setup logging functions
@@ -207,8 +228,14 @@ let rec private doRunTestSuite (suite: Describe) (context: TestContext): TestRes
   let afterHooks = context.ParentAfterHooks |> List.append (List.rev afterHooks)
 
   let testResults = [
-    for testCase in suite.TestCases do
-      runTestCase context.Path testCase beforeHooks afterHooks
+    for testCase in suite.Steps do
+      match testCase with
+      | It itCase ->
+        runTestCase context.Path itCase beforeHooks afterHooks
+      | LogStatement logStatement ->
+        match logStatement with
+        | Info message -> context.Reporter.Info(message, context.Path)
+        | Debug message -> context.Reporter.Debug(message, context.Path)
   ]
 
   for result, logs in testResults do
@@ -248,3 +275,11 @@ module Constraints =
   let shouldNotEqual unexpected actual =
     if unexpected = actual then
       failwithf "Expected not to be %A but got %A" unexpected actual
+
+  let shouldBeTrue condition =
+    if not condition then
+      failwith "Expected condition to be true"
+
+  let shouldBeFalse condition =
+    if condition then
+      failwith "Expected condition to be false"
