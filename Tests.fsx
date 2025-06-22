@@ -15,6 +15,7 @@ let s2 = describe "Suite 2" {
 runTestSuite (describe "Main Suite" { s1; s2 })
 
 let suite = describe "A larger test suite" {
+  Info "Top level info message"
   beforeEach {
     debug "Before each test"
   }
@@ -35,6 +36,7 @@ let suite = describe "A larger test suite" {
   pending "This is a pending test"
 
   describe "Nested suite" {
+    Debug "Use beforeEach and afterEach for setup and teardown"
     it "should also pass" {
       info "Nested test passes"
     }
