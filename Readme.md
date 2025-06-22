@@ -7,8 +7,6 @@
 ## Usage
 
 ```fsharp
-#load "Sprout.fs"
-
 open Sprout
 
 let suite = describe "A test suite" {
