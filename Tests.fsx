@@ -65,3 +65,4 @@ let suite = describe "A larger test suite" {
 }
 
 runTestSuite suite
+runTestSuiteWithContext suite { TestContext.New with Reporter = Reporters.TapReporter() }

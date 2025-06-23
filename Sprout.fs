@@ -36,18 +36,22 @@ type ItBuilder(name: string) =
 let it name = ItBuilder name
 let pending name = It.Pending name
 
-type DescribeStep =
+type Step =
   | It of It
   | LogStatement of LogLevel
 
 type Describe = {
   Name: string
-  Steps: DescribeStep list
+  Steps: Step list
   Each: EachFunction list
   Children: Describe list
 }
 with
-  static member Empty name = {
+  member this.TotalCount =
+    let rec countSteps (describe: Describe) =
+      describe.Children.Length + (describe.Children |> List.map countSteps |> List.sum)
+    countSteps this
+  static member New name = {
     Name = name
     Steps = []
     Each = []
@@ -55,18 +59,18 @@ with
   }
 
 type DescribeBuilder(name) =
-  member _.Zero() = Describe.Empty name
+  member _.Zero() = Describe.New name
   member _.Yield(each: EachFunction) =
-    { Describe.Empty name with Each = [each] }
+    { Describe.New name with Each = [each] }
   member _.Yield(tc: It) =
-    { Describe.Empty name with Steps = [It tc] }
+    { Describe.New name with Steps = [It tc] }
   member _.Yield(log: LogLevel) =
-    { Describe.Empty name with Steps = [LogStatement log] }
+    { Describe.New name with Steps = [LogStatement log] }
   member _.Yield(describe: Describe) =
-    { Describe.Empty name with Children = [describe] }
+    { Describe.New name with Children = [describe] }
   member _.Combine(a, b) =
     {
-      Describe.Empty name
+      Describe.New name
       with
         Each = a.Each @ b.Each
         Children = a.Children @ b.Children
@@ -77,7 +81,7 @@ type DescribeBuilder(name) =
     let sb =
       sequence
       |> Seq.map body
-      |> Seq.fold (fun s a -> this.Combine(s, a)) (Describe.Empty name)
+      |> Seq.fold (fun s a -> this.Combine(s, a)) (Describe.New name)
     sb
   member _.Run(f: Describe) = f
 
@@ -99,6 +103,7 @@ type TestResult =
   | Pending of Path * string
 
 type ITestReporter =
+  abstract Begin : totalCount:int -> unit
   abstract BeginSuite : name:string * path:Path -> unit
   abstract ReportResult : result:TestResult * path:Path -> unit
   abstract EndSuite : name:string * path:Path -> unit
@@ -124,6 +129,9 @@ module Reporters =
       ConsoleReporter("✅", "❌", "❔", "  ")
 
     interface ITestReporter with
+      member _.Begin(totalCount) =
+        printfn $"Running %d{totalCount} tests..."
+        sw.Restart()
       member _.BeginSuite(name, path) =
         let indent = indent path
         printfn $"%s{indent}{AnsiColours.green}{name}{AnsiColours.reset}"
@@ -165,6 +173,32 @@ module Reporters =
         printfn $"Summary: {passedCount} passed, {failedCount} failed, {pendingCount} pending"
         printfn $"Total time: %s{sw.Elapsed.ToString()}"
 
+  type TapReporter() =
+    interface ITestReporter with
+      member this.Begin(totalCount: int): unit =
+        printfn "TAP version 14"
+        printfn "1..%d" totalCount
+      member this.BeginSuite(name: string, path: Path): unit =
+        ()
+      member this.Debug(message: string, path: Path): unit =
+        ()
+      member this.End(arg1: TestResult list): unit = ()
+      member this.EndSuite(name: string, path: Path): unit =
+        printfn ""
+      member this.Info(message: string, path: Path): unit =
+        ()
+      member this.ReportResult(result: TestResult, path: Path): unit =
+        match result with
+        | Passed (_, name) ->
+          printf "ok %s\n" name
+        | Failed (_, name, ex) ->
+          printf
+            "not ok %s\n  ---\n  message: %s\n  severity: fail\n  ...\n"
+            name
+            ex.Message
+        | Pending (_, name) ->
+          printf "ok %s # SKIP\n" name
+
 type TestContext = {
   Path: Path
   ParentBeforeHooks: HookFunction list
@@ -173,7 +207,7 @@ type TestContext = {
   Log: string -> unit
 }
 with
-  static member Empty = {
+  static member New = {
     Path = Path []
     ParentBeforeHooks = []
     ParentAfterHooks = []
@@ -251,11 +285,12 @@ let rec private doRunTestSuite (suite: Describe) (context: TestContext): TestRes
   allResults
 
 let runTestSuiteWithContext (sb: Describe) (context: TestContext) =
+  context.Reporter.Begin(sb.TotalCount)
   let testResults = doRunTestSuite sb { context with Path = Path (context.Path.Value @ [sb.Name]) }
   context.Reporter.EndSuite(sb.Name, context.Path)
   context.Reporter.End testResults
 
-let runTestSuite (describe: Describe) = runTestSuiteWithContext describe TestContext.Empty
+let runTestSuite (describe: Describe) = runTestSuiteWithContext describe TestContext.New
 
 [<AutoOpen>]
 module Constraints =
