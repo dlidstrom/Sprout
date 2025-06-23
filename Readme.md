@@ -163,6 +163,13 @@ let reporter = MyCustomReporter()
 let results = runTestSuiteWithContext reporter suite
 ```
 
+Available reporters:
+
+| Reporter | Description |
+| -------- | ----------- |
+| `ConsoleReporter` | Outputs test results to the console |
+| `TapReporter` | Outputs test results in TAP format |
+
 ---
 
 ### 📦 Package Info
