@@ -164,7 +164,7 @@ let reporter = MyCustomReporter()
 let results = runTestSuiteWithContext reporter suite
 ```
 
-Available reporters:
+Available reporters (available in the `Sprout.Reporters` namespace):
 
 | Reporter | Description |
 | -------- | ----------- |
