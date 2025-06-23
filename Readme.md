@@ -2,21 +2,35 @@
 <img src="logo.png" height="128" width="128" />
 </p>
 
-# Sprout: BDD Testing for F#
+# 🌱 Sprout: BDD Testing for F#
 
-> *Write your tests like your thoughts. Sprout is a lightweight F# test DSL with a clean, composable structure built on computation expressions.*
+> *Sprout is a lightweight F# test DSL with a clean, composable structure built on computation expressions. This allows your test suites to grow almost organically - i.e. sprout.*
 
 [![Build](https://github.com/dlidstrom/Sprout/actions/workflows/build.yml/badge.svg)](https://github.com/dlidstrom/Sprout/actions/workflows/build.yml)
 
 ## ✅ Features
 
 * Minimalist & expressive BDD-style syntax
-* Nestable `describe` blocks
+* Nestable `describe` blocks for organizing tests to any depth or complexity
 * Computation expressions for `it`, `beforeEach`, `afterEach`
-* Pending tests supported by omission
-* Logging for improved tracing
+* Pending tests support
+* Logging for improved traceability
+* Built-in assertions: `shouldEqual`, `shouldBeTrue`, `shouldBeFalse`
+  * These go along way to making your tests readable and expressive due to the
+    descriptive text that goes along with each `describe` block and `it` test
+    case. Note that you may use any exception-based constraints library if
+    desired ([FsUnit.Light](https://github.com/Lanayx/FsUnit.Light) works
+    beautifully).
+* Support for parameterized tests using normal F# loops within `describe` blocks
 * Pluggable reporters (console, silent, TAP, JSON)
-* Built for F# — no extra syntax or matchers
+* Built for F# — simple and idiomatic
+  * No need for `<|` or functions wrapped in parentheses!
+  * No need for complex combination of attributes - it's just all F# code!
+
+Sprout provides a clean API for structuring tests. There are a minimum of
+abstractions. `describe` blocks may be nested to any suitable depth. It is all
+just a matter of *composing* the building blocks. Just like you would expect
+coming from a functional programming background.
 
 ---
 
@@ -25,6 +39,8 @@
 ```bash
 dotnet add package Sprout
 ```
+
+> Sprout is currently only available from [GitHub Packages](https://github.com/dlidstrom/Sprout/pkgs/nuget/Sprout).
 
 ---
 
@@ -100,6 +116,31 @@ Output:
 
 ---
 
+### 📦 Blocks
+
+| Name | Usage | Supported Expressions |
+|-|-|-|
+| `describe` | Declarative | `it`, `beforeEach`, `afterEach`, `it`, `Info`, `Debug` |
+| `it` | Imperative | Any F# expressions, but typically exception-based assertions |
+| `beforeEach`, `afterEach` | Imperative | Hook functions that run before and after test cases, respectively |
+
+* **`describe`** - used to define a test suite, or a group of tests. Use the
+  descriptive text to create descriptive sentences of expected behaviour.
+* **`it`** - used to define test assertions, along with a descriptive text to
+  define the expected behaviour
+* **`beforeEach`/`afterEach`** - hook functions that run before and after test
+  cases, respectively
+* **`pending`** - used to denote a pending test case
+* **`info`/`debug`** - tracing functions that may be used inside hook functions
+  and `it` blocks
+* **`Info`/`Debug`** - constructor functions that provide tracing inside
+  `describe` blocks
+
+> Tracing works slightly different in `describe` blocks due to limitations of me
+> (most likely) and/or F# computation expressions.
+
+---
+
 ### 🧩 Extending Sprout
 
 You can plug in your own reporter:
@@ -115,21 +156,12 @@ type MyCustomReporter() =
     member _.End(testResults) = ...
 ```
 
----
+Use it like this:
 
-### 🎯 Philosophy
-
-Sprout is built on:
-
-* **F# idioms** — computation expressions
-* **Extensibility** — pluggable reporters and hooks
-
-### Blocks
-
-| Name | Usage | Supported Expressions |
-|-|-|-|
-`describe` | Declarative | `it`, `beforeEach`, `afterEach`, `it`, `Info`, `Debug` |
-| `it` | Imperative | Any F# expressions, but typically exception-based assertions |
+```fsharp
+let reporter = MyCustomReporter()
+let results = runTestSuiteWithContext reporter suite
+```
 
 ---
 
@@ -137,7 +169,7 @@ Sprout is built on:
 
 |         |                             |
 | ------- | --------------------------- |
-| NuGet   | `Sprout`                    |
+| NuGet   | [`Sprout`](https://github.com/dlidstrom/Sprout/pkgs/nuget/Sprout) |
 | Target  | .NET Standard 2.0.          |
 | License | MIT                         |
 | Author  | Daniel Lidström             |

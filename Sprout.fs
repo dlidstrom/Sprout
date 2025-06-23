@@ -116,12 +116,12 @@ module Reporters =
     let white = "\u001b[37m"
     let reset = "\u001b[0m"
 
-  type ConsoleReporter(passedChar, failedChar, pendingChar) =
+  type ConsoleReporter(passedChar, failedChar, pendingChar, indentString) =
     let sw = Stopwatch.StartNew()
-    let indent (path: Path) = String.replicate ((path.Length - 1) * 2) " "
+    let indent (path: Path) = String.replicate (path.Length - 1) indentString
 
     new() =
-      ConsoleReporter("✅", "❌", "❔")
+      ConsoleReporter("✅", "❌", "❔", "  ")
 
     interface ITestReporter with
       member _.BeginSuite(name, path) =
@@ -223,10 +223,10 @@ let rec private doRunTestSuite (suite: Describe) (context: TestContext): TestRes
       match testCase with
       | It itCase ->
         runTestCase context.Path itCase beforeHooks afterHooks
-      | LogStatement logStatement ->
-        match logStatement with
-        | Info message -> context.Reporter.Info(message, context.Path)
-        | Debug message -> context.Reporter.Debug(message, context.Path)
+      | LogStatement (Info message) ->
+        context.Reporter.Info(message, context.Path)
+      | LogStatement (Debug message) ->
+        context.Reporter.Debug(message, context.Path)
   ]
 
   for result, logs in testResults do
@@ -255,7 +255,7 @@ let runTestSuiteWithContext (sb: Describe) (context: TestContext) =
   context.Reporter.EndSuite(sb.Name, context.Path)
   context.Reporter.End testResults
 
-let runTestSuite (sb: Describe) = runTestSuiteWithContext sb TestContext.Empty
+let runTestSuite (describe: Describe) = runTestSuiteWithContext describe TestContext.Empty
 
 [<AutoOpen>]
 module Constraints =
