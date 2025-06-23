@@ -33,7 +33,7 @@ jobs:
         uses: anothrNick/github-tag-action@1.73.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WITH_V: true
+          TAG_PREFIX: v
           DEFAULT_BUMP: patch
           MAJOR_STRING_TOKEN: feat!
           MINOR_STRING_TOKEN: feat
