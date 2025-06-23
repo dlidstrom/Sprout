@@ -161,7 +161,10 @@ Use it like this:
 
 ```fsharp
 let reporter = MyCustomReporter()
-let results = runTestSuiteWithContext reporter suite
+let results =
+  runTestSuiteWithContext
+    suite
+    { TestContext.New with Reporter = reporter }
 ```
 
 Available reporters (available in the `Sprout.Reporters` namespace):
