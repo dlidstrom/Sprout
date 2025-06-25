@@ -72,37 +72,30 @@ type ITestReporter =
   abstract Debug : message:string * path:Path -> unit
   abstract End : TestResult [] -> unit
 
-type SimpleAsyncBuilder() =
-    member _.Zero() = async { return () }
-    member _.Delay(f: unit -> Async<unit>) = async.Delay f
-    member _.Run(f: Async<unit>) = f
-    member _.Bind(m: Async<unit>, f: unit -> Async<unit>) = async.Bind(m, f)
-
-let simpleAsync = SimpleAsyncBuilder()
-
-let computation =
-    simpleAsync {
-        do! async { printfn "First" }
-        do! async { printfn "Second" }
-        printfn "Done"
-    }
-
-// To run:
-Async.RunSynchronously computation
 module Builders =
   type EachBuilder(factory: (unit -> Async<unit>) -> EachFunction) =
-    member _.Zero() = ()
-    member _.Delay(f: unit -> unit) = fun() -> async { return f() }
-    member _.Delay(f: unit -> Async<unit>) = f
-    member _.Run(f: (unit -> Async<unit>)) = factory f
-    member _.Run (f: unit -> unit) = factory <| fun() -> async { return f() }
+    member _.Zero() = async { return () }
+    member _.Return x = async { return x }
+    member _.ReturnFrom(x: Async<unit>) = x
+    member _.Delay(f: unit -> Async<unit>) = async.Delay f
+    member _.Combine(a: Async<unit>, b: Async<unit>) = async {
+      do! a
+      do! b
+    }
+    member _.Bind(m: Async<'T>, f: 'T -> Async<unit>) = async.Bind(m, f)
+    member _.Run(f: Async<unit>) = factory (fun() -> f)
 
   type ItBuilder(name: string) =
-    member _.Zero() = ()
-    member _.Delay(f: unit -> unit) = fun() -> async { return f() }
-    member _.Delay(f: unit -> Async<unit>) = f
-    member _.Run (f: unit -> Async<unit>) = It.Active name f
-    member _.Run (f: unit -> unit) = It.Active name (fun() -> async { return f() })
+    member _.Zero() = async { return () }
+    member _.Return x = async { return x }
+    member _.ReturnFrom(x: Async<unit>) = x
+    member _.Delay(f: unit -> Async<unit>) = async.Delay f
+    member _.Combine(a: Async<unit>, b: Async<unit>) = async {
+      do! a
+      do! b
+    }
+    member _.Bind(m: Async<'T>, f: 'T -> Async<unit>) = async.Bind(m, f)
+    member _.Run(f: Async<unit>) = It.Active name (fun () -> f)
 
   type DescribeBuilder(name) =
     member _.Zero() = Describe.New name
@@ -138,31 +131,6 @@ let it name = Builders.ItBuilder name
 let pending name = It.Pending name
 
 let describe name = Builders.DescribeBuilder name
-
-let asyncSuite = describe "Async Tests" {
-  beforeEach {
-    let! x = async {
-      debug "Before each async test"
-      return 42
-    }
-    do! Async.Sleep 100
-  }
-
-  it "should run an async test" {
-    do! Async.Sleep 100
-    let! x = async {
-      debug "Before each async test"
-      return 42
-    }
-    printfn "Async test completed with value: %d" x
-  }
-
-  it "should handle async failure" {
-    do! Async.Sleep 100
-    failwith "Intentional async failure"
-  }
-}
-
 
 module Reporters =
   open System.Diagnostics

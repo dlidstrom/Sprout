@@ -83,8 +83,12 @@ let asyncSuite = describe "Async Tests" {
   }
 }
 
-runTestSuite suite
-runTestSuiteWithContext
-  { TestContext.New with Reporter = Reporters.TapReporter() }
-  suite
-runTestSuite asyncSuite
+[
+  runTestSuite suite
+  runTestSuiteWithContext
+    { TestContext.New with Reporter = Reporters.TapReporter() }
+    suite
+  runTestSuite asyncSuite
+]
+|> Async.Sequential
+|> Async.RunSynchronously
