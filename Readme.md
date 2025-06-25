@@ -13,6 +13,7 @@
 * Minimalist & expressive BDD-style syntax
 * Nestable `describe` blocks for organizing tests to any depth or complexity
 * Computation expressions for `it`, `beforeEach`, `afterEach`
+* Asynchronous blocks supported
 * Pending tests support
 * Logging for improved traceability
 * Built-in assertions: `shouldEqual`, `shouldBeTrue`, `shouldBeFalse`
