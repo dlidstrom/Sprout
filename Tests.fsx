@@ -64,5 +64,27 @@ let suite = describe "A larger test suite" {
   }
 }
 
+let asyncSuite = describe "Async Tests" {
+  beforeEach {
+    let! x = async {
+      debug "Before each async test"
+      return 42
+    }
+    do! Async.Sleep 100
+  }
+
+  it "should run an async test" {
+    do! Async.Sleep 100
+  }
+
+  it "should handle async failure" {
+    do! Async.Sleep 100
+    failwith "Intentional async failure"
+  }
+}
+
 runTestSuite suite
-runTestSuiteWithContext suite { TestContext.New with Reporter = Reporters.TapReporter() }
+runTestSuiteWithContext
+  { TestContext.New with Reporter = Reporters.TapReporter() }
+  suite
+runTestSuite asyncSuite
