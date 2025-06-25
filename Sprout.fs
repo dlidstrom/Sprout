@@ -150,8 +150,7 @@ module Reporters =
       ConsoleReporter("✅", "❌", "❔", "  ")
 
     interface ITestReporter with
-      member _.Begin(totalCount) =
-        printfn $"Running %d{totalCount} tests..."
+      member _.Begin totalCount =
         sw.Restart()
       member _.BeginSuite(name, path) =
         let indent = indent path
