@@ -333,6 +333,7 @@ let runTestSuiteWithContext (context: TestContext) (sb: Describe) =
     let! testResults = Runner.doRunTestSuite sb { context with Path = Path (context.Path.Value @ [sb.Name]) }
     context.Reporter.EndSuite(sb.Name, context.Path)
     context.Reporter.End testResults
+    return testResults |> Array.sumBy (function Failed _ -> 1 | _ -> 0)
   }
 
 let runTestSuite (describe: Describe) =
