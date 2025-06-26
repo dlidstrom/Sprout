@@ -171,7 +171,7 @@ type MyCustomReporter() =
 Use it like this:
 
 ```fsharp
-let reporter = MyCustomReporter()
+let reporter = MyCustomReporter() :> ITestReporter
 let results =
   runTestSuiteWithContext
     suite
@@ -191,7 +191,7 @@ Available reporters (available in the `Sprout.Reporters` namespace):
 
 |         |                             |
 | ------- | --------------------------- |
-| NuGet   | [`Sprout`](https://github.com/dlidstrom/Sprout/pkgs/nuget/Sprout) |
+| NuGet   | [`Sprout`](https://www.nuget.org/packages/dlidstrom.Sprout) |
 | Target  | .NET Standard 2.0.          |
 | License | MIT                         |
 | Author  | Daniel Lidström             |
