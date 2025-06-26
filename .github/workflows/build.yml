@@ -95,4 +95,7 @@ jobs:
         env:
           VERSION: ${{ needs.get-version.outputs.tag }}
           API_KEY: ${{ secrets.NUGET_PASSWORD }}
-        run: dotnet nuget push "bin/Release/Sprout.${VERSION:1}.nupkg" --api-key ${API_KEY} --source nuget --skip-duplicate
+          NUGET_APIKEY: ${{ secrets.NUGET_APIKEY }}
+        run: |
+          dotnet nuget push "bin/Release/Sprout.${VERSION:1}.nupkg" --api-key ${API_KEY}      --source nuget --skip-duplicate
+          dotnet nuget push "bin/Release/Sprout.${VERSION:1}.nupkg" --api-key ${NUGET_APIKEY} --source https://api.nuget.org/v3/index.json --skip-duplicate
