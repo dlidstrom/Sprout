@@ -9,6 +9,7 @@
     <Title>Sprout: BDD Testing for F#</Title>
     <Description>Sprout is a Behavior-Driven Development (BDD) testing framework for F# that allows you to write tests in a natural language style, making it easier to understand and maintain.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>Readme.md</PackageReadmeFile>
     <PackageProjectUrl>https://github.com/dlidstrom/Sprout</PackageProjectUrl>
     <PackageIcon>logo.png</PackageIcon>
     <Authors>Daniel Lidström</Authors>
