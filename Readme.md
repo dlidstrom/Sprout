@@ -7,6 +7,7 @@
 > *Sprout is a lightweight F# test DSL with a clean, composable structure built on computation expressions. This allows your test suites to grow almost organically - i.e. sprout.*
 
 [![Build](https://github.com/dlidstrom/Sprout/actions/workflows/build.yml/badge.svg)](https://github.com/dlidstrom/Sprout/actions/workflows/build.yml)
+[![NuGet version](https://badge.fury.io/nu/dlidstrom.Sprout.svg)](https://badge.fury.io/nu/dlidstrom.Sprout)
 
 ## ✅ Features
 
@@ -38,10 +39,8 @@ coming from a functional programming background.
 ### 🚀 Getting Started
 
 ```bash
-dotnet add package Sprout
+dotnet add package dlidstrom.Sprout
 ```
-
-> Sprout is currently only available from [GitHub Packages](https://github.com/dlidstrom/Sprout/pkgs/nuget/Sprout).
 
 ---
 
