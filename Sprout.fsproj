@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageId>Sprout</PackageId>
+    <PackageId>dlidstrom.Sprout</PackageId>
     <Version>0.0.1-dev</Version>
     <Title>Sprout: BDD Testing for F#</Title>
     <Description>Sprout is a Behavior-Driven Development (BDD) testing framework for F# that allows you to write tests in a natural language style, making it easier to understand and maintain.</Description>
