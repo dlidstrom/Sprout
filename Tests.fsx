@@ -68,9 +68,9 @@ let asyncSuite = describe "Async Tests" {
   beforeEach {
     let! x = async {
       debug "Before each async test"
-      return 42
+      return 100
     }
-    do! Async.Sleep 100
+    do! Async.Sleep x
   }
 
   it "should run an async test" {
