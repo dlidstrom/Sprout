@@ -34,6 +34,7 @@
     <None Include="Readme.md" Pack="true" PackagePath="\" />
     <None Include="sprout.png" Pack="true" PackagePath="\" />
     <None Include="logo.png" Pack="true" PackagePath="\" />
+    <None Include="out.png" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
