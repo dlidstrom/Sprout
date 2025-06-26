@@ -1,5 +1,5 @@
 <p align="center">
-<img src="logo.png" height="128" width="128" />
+<img src="https://raw.githubusercontent.com/dlidstrom/Sprout/refs/heads/main/logo.png" height="128" width="128" />
 </p>
 
 # 🌱 Sprout: BDD Testing for F#
@@ -123,7 +123,7 @@ runTestSuite
 
 Output:
 
-![output](out.png)
+![output](https://raw.githubusercontent.com/dlidstrom/Sprout/refs/heads/main/out.png)
 
 ---
 
