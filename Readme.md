@@ -117,7 +117,7 @@ let suite = describe "A test suite" {
 }
 
 // Run the test suite asynchronously
-runTestSuite
+runTestSuite suite
 |> Async.RunSynchronously
 ```
 
