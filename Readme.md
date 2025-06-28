@@ -172,10 +172,11 @@ Use it like this:
 
 ```fsharp
 let reporter = MyCustomReporter() :> ITestReporter
-let results =
+let failedCount =
   runTestSuiteWithContext
     suite
     { TestContext.New with Reporter = reporter }
+  |> Async.RunSynchronously
 ```
 
 Available reporters (available in the `Sprout.Reporters` namespace):
