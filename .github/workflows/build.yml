@@ -30,7 +30,8 @@ jobs:
           fetch-depth: 0
       - name: Get version
         id: tag
-        uses: anothrNick/github-tag-action@1.73.0
+        #uses: anothrNick/github-tag-action@1.73.0
+        uses: rorybartie/github-tag-action@bugfix/duplicate-prefix-on-prerelease
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_PREFIX: v
