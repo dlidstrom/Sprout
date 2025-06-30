@@ -222,7 +222,7 @@ module Reporters =
         ()
       member this.End(arg1: TestResult []): unit = ()
       member this.EndSuite(name: string, path: Path): unit =
-        printfn ""
+        ()
       member this.Info(message: string, path: Path): unit =
         ()
       member this.ReportResult(result: TestResult, path: Path): unit =
@@ -341,15 +341,16 @@ module Runner =
             child
             childContext)
         |> Async.Sequential
+      context.Reporter.EndSuite(suite.Name, context.Path)
       let allResults = Array.concat [| itResults; Array.concat childrenResults |]
       return allResults
     }
 
-let runTestSuiteWithContext (context: TestContext) (sb: Describe) =
+let runTestSuiteWithContext (context: TestContext) (suite: Describe) =
   async {
-    context.Reporter.Begin sb.TotalCount
-    let! testResults = Runner.doRunTestSuite sb { context with Path = Path (context.Path.Value @ [sb.Name]) }
-    context.Reporter.EndSuite(sb.Name, context.Path)
+    context.Reporter.Begin suite.TotalCount
+    let! testResults = Runner.doRunTestSuite suite { context with Path = Path (context.Path.Value @ [suite.Name]) }
+    context.Reporter.EndSuite(suite.Name, context.Path)
     context.Reporter.End testResults
     return testResults |> Seq.filter _.IsFailed |> Seq.toArray
   }
