@@ -58,10 +58,31 @@ with
   member this.Value =
     match this with
     | Path p -> p
-type TestResult =
+type TestOutcome =
   | Passed of Path * string
   | Failed of Path * string * exn
   | Pending of Path * string
+type TestResult = {
+  Outcome: TestOutcome
+  Logs: LogLevel list
+}
+with
+  member this.IsPassed =
+    match this.Outcome with
+    | Passed _ -> true
+    | _ -> false
+  member this.IsFailed =
+    match this.Outcome with
+    | Failed _ -> true
+    | _ -> false
+  member this.IsPending =
+    match this.Outcome with
+    | Pending _ -> true
+    | _ -> false
+
+type CollectedStep =
+  | CollectedIt of Path * HookFunction list * HookFunction list * It
+  | CollectedLog of Path * LogLevel
 
 type ITestReporter =
   abstract Begin : totalCount:int -> unit
@@ -154,11 +175,11 @@ module Reporters =
         sw.Restart()
       member _.BeginSuite(name, path) =
         let indent = indent path
-        printfn $"%s{indent}{AnsiColours.green}{name}{AnsiColours.reset}"
+        printfn $"%s{indent}%s{AnsiColours.green}%s{name}%s{AnsiColours.reset}"
 
       member _.ReportResult(result, path) =
         let indent = indent path
-        match result with
+        match result.Outcome with
         | Passed (_, name) ->
             printfn $"%s{indent}%s{AnsiColours.green}  %s{passedChar} passed: %s{name}%s{AnsiColours.reset}"
         | Failed (_, name, ex) ->
@@ -174,23 +195,24 @@ module Reporters =
         let indent = indent path
         printfn $"%s{indent}%s{AnsiColours.white}%s{message}%s{AnsiColours.reset}"
       member _.End(testResults: TestResult []): unit =
-        let testFailures = testResults |> Array.filter (function Failed _ -> true | _ -> false)
+        let testFailures = testResults |> Array.filter _.IsFailed
         if Array.isEmpty testFailures then
           printfn $"All tests passed!"
         else
           printfn $"There were %d{Array.length testFailures} test failures:"
-        testResults |> Array.iter (function
+        testResults |> Array.iter (fun tr ->
+          match tr.Outcome with
           | Failed (path, name, ex) ->
             let pathString = String.concat " / " path.Value
             printfn $"- %s{AnsiColours.red}%s{pathString} / %s{name} - %s{ex.Message}%s{AnsiColours.reset}"
           | _ -> ())
 
         // Count results
-        let passedCount = testResults |> Array.filter (function Passed _ -> true | _ -> false) |> Array.length
-        let failedCount = testResults |> Array.filter (function Failed _ -> true | _ -> false) |> Array.length
-        let pendingCount = testResults |> Array.filter (function Pending _ -> true | _ -> false) |> Array.length
+        let passedCount = testResults |> Seq.filter _.IsPassed |> Seq.length
+        let failedCount = testResults |> Seq.filter _.IsFailed |> Seq.length
+        let pendingCount = testResults |> Seq.filter _.IsPending |> Seq.length
 
-        printfn $"Summary: {passedCount} passed, {failedCount} failed, {pendingCount} pending"
+        printfn $"Summary: %d{passedCount} passed, %d{failedCount} failed, %d{pendingCount} pending"
         printfn $"Total time: %s{sw.Elapsed.ToString()}"
 
   type TapReporter() =
@@ -204,11 +226,11 @@ module Reporters =
         ()
       member this.End(arg1: TestResult []): unit = ()
       member this.EndSuite(name: string, path: Path): unit =
-        printfn ""
+        ()
       member this.Info(message: string, path: Path): unit =
         ()
       member this.ReportResult(result: TestResult, path: Path): unit =
-        match result with
+        match result.Outcome with
         | Passed (_, name) ->
           printf "ok %s\n" name
         | Failed (_, name, ex) ->
@@ -236,15 +258,15 @@ with
   }
 
 module Runner =
-  let private runTestCase path (testCase: It) beforeHooks afterHooks: Async<TestResult * ResizeArray<LogLevel>> =
+  let private runTestCase path (testCase: It) beforeHooks afterHooks: Async<TestResult> =
     async {
       // setup logging functions
       let info', debug' = info, debug
       use _ = { new System.IDisposable with
         member _.Dispose() = info <- info'; debug <- debug' }
-      let logs = ResizeArray<LogLevel>()
-      info <- fun s -> logs.Add (Info s)
-      debug <- fun s -> logs.Add (Debug s)
+      let mutable logs = []
+      info <- fun s -> logs <- Info s :: logs
+      debug <- fun s -> logs <- Debug s :: logs
       for hookFunction in beforeHooks do
         do! hookFunction()
       let! result =
@@ -263,82 +285,80 @@ module Runner =
           }
       for hookFunction in afterHooks do
         do! hookFunction()
-      return result, logs
+      return {
+        Outcome = result
+        Logs = List.rev logs
+      }
     }
 
-  let rec doRunTestSuite (suite: Describe) (context: TestContext): Async<TestResult []> =
-    async {
-      context.Reporter.BeginSuite(suite.Name, context.Path)
-
+  let collectSteps (root: Describe) =
+    let rec loop (parentPath: string list) (parentBefore: HookFunction list) (parentAfter: HookFunction list) (d: Describe) =
       let beforeHooks, afterHooks =
-        suite.Each
+        d.Each
         |> List.fold (fun (be, af) hook ->
           match hook with
           | Before hookFunction -> hookFunction :: be, af
           | After hookFunction -> be, hookFunction :: af
         ) ([], [])
-      let beforeHooks = List.rev beforeHooks |> List.append context.ParentBeforeHooks
-      let afterHooks = context.ParentAfterHooks |> List.append (List.rev afterHooks)
-
-      let! testResults =
-        suite.Steps
+      let beforeHooks = List.rev beforeHooks @ parentBefore
+      let afterHooks = parentAfter @ List.rev afterHooks
+      let path = parentPath @ [d.Name]
+      let steps =
+        d.Steps
         |> List.map (function
-          | ItStep itCase ->
-            async {
-              let! s, i = runTestCase context.Path itCase beforeHooks afterHooks
-              return Some (s, i)
-            }
-          | LogStatementStep (Info message) ->
-            async {
-              context.Reporter.Info(message, context.Path)
-              return None
-            }
-          | LogStatementStep (Debug message) ->
-            async {
-              context.Reporter.Debug(message, context.Path)
-              return None
-            })
-        |> Async.Sequential
+          | ItStep it -> CollectedIt (Path path, beforeHooks, afterHooks, it)
+          | LogStatementStep log -> CollectedLog (Path path, log))
+      let children =
+        d.Children
+        |> List.collect (loop path beforeHooks afterHooks)
+      steps @ children
+    loop [] [] [] root
 
-      let itResults = testResults |> Array.choose id
-      for result, logs in itResults do
-        for log in logs do
-          match log with
-          | Info message -> context.Reporter.Info(message, context.Path)
-          | Debug message -> context.Reporter.Debug(message, context.Path)
-        context.Reporter.ReportResult(result, context.Path)
-
-      let! childrenResults =
-        suite.Children
-        |> Seq.map (fun child ->
-          let childContext =
-            { context with
-                ParentBeforeHooks = beforeHooks
-                ParentAfterHooks = afterHooks
-                Path = Path (context.Path.Value @ [child.Name]) }
-          doRunTestSuite
-            child
-            childContext)
+  let runCollectedSteps (context: TestContext) (steps: CollectedStep list) (order: CollectedStep list -> CollectedStep list) =
+    async {
+      let orderedSteps = order steps
+      let! results =
+        orderedSteps
+        |> List.map (function
+          | CollectedIt (path, beforeHooks, afterHooks, it) ->
+              async {
+                let! result = runTestCase path it beforeHooks afterHooks
+                // Report logs and result
+                for log in result.Logs do
+                  match log with
+                  | Info message -> context.Reporter.Info(message, path)
+                  | Debug message -> context.Reporter.Debug(message, path)
+                context.Reporter.ReportResult(result, path)
+                return Some result
+              }
+          | CollectedLog (path, log) ->
+              async {
+                match log with
+                | Info message -> context.Reporter.Info(message, path)
+                | Debug message -> context.Reporter.Debug(message, path)
+                return None
+              })
         |> Async.Sequential
-      let head = itResults |> Array.map fst
-      let tail = Array.concat childrenResults
-      let allResults = Array.concat [| head;  tail |]
-      return allResults
+      let testResults = results |> Array.choose id
+      context.Reporter.End testResults
+      return testResults
     }
 
-let runTestSuiteWithContext (context: TestContext) (sb: Describe) =
+let runTestSuiteWithContext (context: TestContext) (suite: Describe) (order: CollectedStep list -> CollectedStep list) =
   async {
-    context.Reporter.Begin sb.TotalCount
-    let! testResults = Runner.doRunTestSuite sb { context with Path = Path (context.Path.Value @ [sb.Name]) }
-    context.Reporter.EndSuite(sb.Name, context.Path)
+    context.Reporter.Begin suite.TotalCount
+    let steps = Runner.collectSteps suite
+    let! testResults = Runner.runCollectedSteps { context with Path = Path (context.Path.Value @ [suite.Name]) } steps order
+    context.Reporter.EndSuite(suite.Name, context.Path)
     context.Reporter.End testResults
-    return testResults |> Array.sumBy (function Failed _ -> 1 | _ -> 0)
+    return testResults |> Array.filter _.IsFailed
   }
 
 let runTestSuite (describe: Describe) =
   runTestSuiteWithContext
     TestContext.New
     describe
+    id
 
 [<AutoOpen>]
 module Constraints =
