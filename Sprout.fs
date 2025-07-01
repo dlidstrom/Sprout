@@ -80,6 +80,10 @@ with
     | Pending _ -> true
     | _ -> false
 
+type CollectedStep =
+  | CollectedIt of Path * HookFunction list * HookFunction list * It
+  | CollectedLog of Path * LogLevel
+
 type ITestReporter =
   abstract Begin : totalCount:int -> unit
   abstract BeginSuite : name:string * path:Path -> unit
@@ -287,6 +291,59 @@ module Runner =
       }
     }
 
+  let collectSteps (root: Describe) =
+    let rec loop (parentPath: string list) (parentBefore: HookFunction list) (parentAfter: HookFunction list) (d: Describe) =
+      let beforeHooks, afterHooks =
+        d.Each
+        |> List.fold (fun (be, af) hook ->
+          match hook with
+          | Before hookFunction -> hookFunction :: be, af
+          | After hookFunction -> be, hookFunction :: af
+        ) ([], [])
+      let beforeHooks = List.rev beforeHooks @ parentBefore
+      let afterHooks = parentAfter @ List.rev afterHooks
+      let path = parentPath @ [d.Name]
+      let steps =
+        d.Steps
+        |> List.map (function
+          | ItStep it -> CollectedIt (Path path, beforeHooks, afterHooks, it)
+          | LogStatementStep log -> CollectedLog (Path path, log))
+      let children =
+        d.Children
+        |> List.collect (loop path beforeHooks afterHooks)
+      steps @ children
+    loop [] [] [] root
+
+  let runCollectedSteps (context: TestContext) (steps: CollectedStep list) (order: CollectedStep list -> CollectedStep list) =
+    async {
+      let orderedSteps = order steps
+      let! results =
+        orderedSteps
+        |> List.map (function
+          | CollectedIt (path, beforeHooks, afterHooks, it) ->
+              async {
+                let! result = runTestCase path it beforeHooks afterHooks
+                // Report logs and result
+                for log in result.Logs do
+                  match log with
+                  | Info message -> context.Reporter.Info(message, path)
+                  | Debug message -> context.Reporter.Debug(message, path)
+                context.Reporter.ReportResult(result, path)
+                return Some result
+              }
+          | CollectedLog (path, log) ->
+              async {
+                match log with
+                | Info message -> context.Reporter.Info(message, path)
+                | Debug message -> context.Reporter.Debug(message, path)
+                return None
+              })
+        |> Async.Sequential
+      let testResults = results |> Array.choose id
+      context.Reporter.End testResults
+      return testResults
+    }
+
   let rec doRunTestSuite (suite: Describe) (context: TestContext): Async<TestResult []> =
     async {
       context.Reporter.BeginSuite(suite.Name, context.Path)
@@ -346,19 +403,21 @@ module Runner =
       return allResults
     }
 
-let runTestSuiteWithContext (context: TestContext) (suite: Describe) =
+let runTestSuiteWithContext (context: TestContext) (suite: Describe) (order: CollectedStep list -> CollectedStep list) =
   async {
     context.Reporter.Begin suite.TotalCount
-    let! testResults = Runner.doRunTestSuite suite { context with Path = Path (context.Path.Value @ [suite.Name]) }
+    let steps = Runner.collectSteps suite
+    let! testResults = Runner.runCollectedSteps { context with Path = Path (context.Path.Value @ [suite.Name]) } steps order
     context.Reporter.EndSuite(suite.Name, context.Path)
     context.Reporter.End testResults
-    return testResults |> Seq.filter _.IsFailed |> Seq.toArray
+    return testResults |> Array.filter _.IsFailed
   }
 
 let runTestSuite (describe: Describe) =
   runTestSuiteWithContext
     TestContext.New
     describe
+    id
 
 [<AutoOpen>]
 module Constraints =
