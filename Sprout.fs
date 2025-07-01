@@ -344,65 +344,6 @@ module Runner =
       return testResults
     }
 
-  let rec doRunTestSuite (suite: Describe) (context: TestContext): Async<TestResult []> =
-    async {
-      context.Reporter.BeginSuite(suite.Name, context.Path)
-
-      let beforeHooks, afterHooks =
-        suite.Each
-        |> List.fold (fun (be, af) hook ->
-          match hook with
-          | Before hookFunction -> hookFunction :: be, af
-          | After hookFunction -> be, hookFunction :: af
-        ) ([], [])
-      let beforeHooks = List.rev beforeHooks |> List.append context.ParentBeforeHooks
-      let afterHooks = context.ParentAfterHooks |> List.append (List.rev afterHooks)
-
-      let! testResults =
-        suite.Steps
-        |> List.map (function
-          | ItStep itCase ->
-            async {
-              let! itResult = runTestCase context.Path itCase beforeHooks afterHooks
-              return Some itResult
-            }
-          | LogStatementStep (Info message) ->
-            async {
-              context.Reporter.Info(message, context.Path)
-              return None
-            }
-          | LogStatementStep (Debug message) ->
-            async {
-              context.Reporter.Debug(message, context.Path)
-              return None
-            })
-        |> Async.Sequential
-
-      let itResults = testResults |> Array.choose id
-      for itResult in itResults do
-        for log in itResult.Logs do
-          match log with
-          | Info message -> context.Reporter.Info(message, context.Path)
-          | Debug message -> context.Reporter.Debug(message, context.Path)
-        context.Reporter.ReportResult(itResult, context.Path)
-
-      let! childrenResults =
-        suite.Children
-        |> Seq.map (fun child ->
-          let childContext =
-            { context with
-                ParentBeforeHooks = beforeHooks
-                ParentAfterHooks = afterHooks
-                Path = Path (context.Path.Value @ [child.Name]) }
-          doRunTestSuite
-            child
-            childContext)
-        |> Async.Sequential
-      context.Reporter.EndSuite(suite.Name, context.Path)
-      let allResults = Array.concat [| itResults; Array.concat childrenResults |]
-      return allResults
-    }
-
 let runTestSuiteWithContext (context: TestContext) (suite: Describe) (order: CollectedStep list -> CollectedStep list) =
   async {
     context.Reporter.Begin suite.TotalCount
