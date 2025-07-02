@@ -40,6 +40,13 @@ with
       (d.Steps |> List.sumBy (function ItStep _ -> 1 | _ -> 0)) +
       (d.Children |> List.sumBy count)
     count this
+  member this.CollectHooks() =
+    this.Each
+    |> List.fold (fun (be, af) hook ->
+      match hook with
+      | Before hookFunction -> hookFunction :: be, af
+      | After hookFunction -> be, hookFunction :: af
+    ) ([], [])
 
   static member New name = {
     Name = name
@@ -277,14 +284,8 @@ module Runner =
     }
 
   let collectSteps (describe: Describe) =
-    let rec loop (parentPath: string list) (parentBefore: HookFunction list) (parentAfter: HookFunction list) (describe: Describe) =
-      let beforeHooks, afterHooks =
-        describe.Each
-        |> List.fold (fun (be, af) hook ->
-          match hook with
-          | Before hookFunction -> hookFunction :: be, af
-          | After hookFunction -> be, hookFunction :: af
-        ) ([], [])
+    let rec loop parentPath parentBefore parentAfter (describe: Describe) =
+      let beforeHooks, afterHooks = describe.CollectHooks()
       let beforeHooks = List.rev beforeHooks @ parentBefore
       let afterHooks = parentAfter @ List.rev afterHooks
       let path = parentPath @ [describe.Name]
