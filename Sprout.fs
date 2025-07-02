@@ -78,6 +78,13 @@ type CollectedStep =
   | CollectedIt of Path * HookFunction list * HookFunction list * It
   | CollectedLog of Path * LogLevel
 
+type CollectedDescribe = {
+  Name: string
+  Path: Path
+  Steps: CollectedStep list
+  Children: CollectedDescribe list
+}
+
 type ITestReporter =
   abstract Begin : totalCount:int -> unit
   abstract BeginSuite : name:string * path:Path -> unit
@@ -240,6 +247,7 @@ type TestContext = {
   ParentAfterHooks: HookFunction list
   Reporter: ITestReporter
   Log: string -> unit
+  Order: CollectedStep list -> CollectedStep list // <-- Add this line
 }
 with
   static member New = {
@@ -247,9 +255,32 @@ with
     ParentAfterHooks = []
     Reporter = Reporters.ConsoleReporter() :> ITestReporter
     Log = printfn "%s"
+    Order = id // Default: preserve order
   }
 
 module Runner =
+  let collectDescribes (describe: Describe) =
+    let rec loop parentPath parentBefore parentAfter (d: Describe) =
+      let beforeHooks, afterHooks = d.CollectHooks()
+      let beforeHooks = List.rev beforeHooks @ parentBefore
+      let afterHooks = parentAfter @ List.rev afterHooks
+      let path = parentPath @ [d.Name]
+      let steps =
+        d.Steps
+        |> List.map (function
+          | ItStep it -> CollectedIt (Path path, beforeHooks, afterHooks, it)
+          | LogStatementStep log -> CollectedLog (Path path, log))
+      let children =
+        d.Children
+        |> List.map (loop path beforeHooks afterHooks)
+      {
+        Name = d.Name
+        Path = Path path
+        Steps = steps
+        Children = children
+      }
+    loop [] [] [] describe
+
   let private runTestCase path (testCase: It) beforeHooks afterHooks: Async<TestResult> =
     async {
       // setup logging functions
@@ -283,33 +314,16 @@ module Runner =
       }
     }
 
-  let collectSteps (describe: Describe) =
-    let rec loop parentPath parentBefore parentAfter (describe: Describe) =
-      let beforeHooks, afterHooks = describe.CollectHooks()
-      let beforeHooks = List.rev beforeHooks @ parentBefore
-      let afterHooks = parentAfter @ List.rev afterHooks
-      let path = parentPath @ [describe.Name]
-      let steps =
-        describe.Steps
-        |> List.map (function
-          | ItStep it -> CollectedIt (Path path, beforeHooks, afterHooks, it)
-          | LogStatementStep log -> CollectedLog (Path path, log))
-      let children =
-        describe.Children
-        |> List.collect (loop path beforeHooks afterHooks)
-      steps @ children
-    loop [] [] [] describe
-
-  let runCollectedSteps (context: TestContext) (steps: CollectedStep list) (order: CollectedStep list -> CollectedStep list) =
+  let rec runCollectedDescribe (context: TestContext) (cd: CollectedDescribe) =
     async {
-      let orderedSteps = order steps
-      let! results =
-        orderedSteps
+      context.Reporter.BeginSuite(cd.Name, cd.Path)
+      let! stepResults =
+        cd.Steps
+        |> context.Order
         |> List.map (function
           | CollectedIt (path, beforeHooks, afterHooks, it) ->
               async {
                 let! result = runTestCase path it beforeHooks afterHooks
-                // Report logs and result
                 for log in result.Logs do
                   match log with
                   | Info message -> context.Reporter.Info(message, path)
@@ -325,26 +339,34 @@ module Runner =
                 return None
               })
         |> Async.Sequential
-      let testResults = results |> Array.choose id
-      context.Reporter.End testResults
-      return testResults
+      let! childResults =
+        cd.Children
+        |> List.map (runCollectedDescribe context)
+        |> Async.Sequential
+      context.Reporter.EndSuite(cd.Name, cd.Path)
+
+      let allResults =
+        Array.concat [
+          Array.choose id stepResults
+          Array.concat childResults
+        ]
+      return allResults
     }
 
-let runTestSuiteWithContext (context: TestContext) (suite: Describe) (order: CollectedStep list -> CollectedStep list) =
+let runTestSuiteWithContext (context: TestContext) (suite: Describe) =
   async {
     context.Reporter.Begin suite.TotalCount
-    let steps = Runner.collectSteps suite
-    let! testResults = Runner.runCollectedSteps context steps order
+    let collected = Runner.collectDescribes suite
+    let! testResults = Runner.runCollectedDescribe context collected
     context.Reporter.EndSuite(suite.Name, Path [suite.Name])
     context.Reporter.End testResults
-    return testResults |> Array.filter _.Outcome.IsFailed
+    return testResults
   }
 
 let runTestSuite (describe: Describe) =
   runTestSuiteWithContext
     TestContext.New
     describe
-    id
 
 [<AutoOpen>]
 module Constraints =
