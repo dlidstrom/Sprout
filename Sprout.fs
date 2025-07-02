@@ -66,19 +66,6 @@ type TestResult = {
   Outcome: TestOutcome
   Logs: LogLevel list
 }
-with
-  member this.IsPassed =
-    match this.Outcome with
-    | Passed _ -> true
-    | _ -> false
-  member this.IsFailed =
-    match this.Outcome with
-    | Failed _ -> true
-    | _ -> false
-  member this.IsPending =
-    match this.Outcome with
-    | Pending _ -> true
-    | _ -> false
 
 type CollectedStep =
   | CollectedIt of Path * HookFunction list * HookFunction list * It
@@ -195,7 +182,7 @@ module Reporters =
         let indent = indent path
         printfn $"%s{indent}%s{AnsiColours.white}%s{message}%s{AnsiColours.reset}"
       member _.End(testResults: TestResult []): unit =
-        let testFailures = testResults |> Array.filter _.IsFailed
+        let testFailures = testResults |> Array.filter _.Outcome.IsFailed
         if Array.isEmpty testFailures then
           printfn $"All tests passed!"
         else
@@ -208,9 +195,9 @@ module Reporters =
           | _ -> ())
 
         // Count results
-        let passedCount = testResults |> Seq.filter _.IsPassed |> Seq.length
-        let failedCount = testResults |> Seq.filter _.IsFailed |> Seq.length
-        let pendingCount = testResults |> Seq.filter _.IsPending |> Seq.length
+        let passedCount = testResults |> Seq.filter _.Outcome.IsPassed |> Seq.length
+        let failedCount = testResults |> Seq.filter _.Outcome.IsFailed |> Seq.length
+        let pendingCount = testResults |> Seq.filter _.Outcome.IsPending |> Seq.length
 
         printfn $"Summary: %d{passedCount} passed, %d{failedCount} failed, %d{pendingCount} pending"
         printfn $"Total time: %s{sw.Elapsed.ToString()}"
@@ -242,7 +229,6 @@ module Reporters =
           printf "ok %s # SKIP\n" name
 
 type TestContext = {
-  Path: Path
   ParentBeforeHooks: HookFunction list
   ParentAfterHooks: HookFunction list
   Reporter: ITestReporter
@@ -250,7 +236,6 @@ type TestContext = {
 }
 with
   static member New = {
-    Path = Path []
     ParentBeforeHooks = []
     ParentAfterHooks = []
     Reporter = Reporters.ConsoleReporter() :> ITestReporter
@@ -291,10 +276,10 @@ module Runner =
       }
     }
 
-  let collectSteps (root: Describe) =
-    let rec loop (parentPath: string list) (parentBefore: HookFunction list) (parentAfter: HookFunction list) (d: Describe) =
+  let collectSteps (describe: Describe) =
+    let rec loop (parentPath: string list) (parentBefore: HookFunction list) (parentAfter: HookFunction list) (describe: Describe) =
       let beforeHooks, afterHooks =
-        d.Each
+        describe.Each
         |> List.fold (fun (be, af) hook ->
           match hook with
           | Before hookFunction -> hookFunction :: be, af
@@ -302,17 +287,17 @@ module Runner =
         ) ([], [])
       let beforeHooks = List.rev beforeHooks @ parentBefore
       let afterHooks = parentAfter @ List.rev afterHooks
-      let path = parentPath @ [d.Name]
+      let path = parentPath @ [describe.Name]
       let steps =
-        d.Steps
+        describe.Steps
         |> List.map (function
           | ItStep it -> CollectedIt (Path path, beforeHooks, afterHooks, it)
           | LogStatementStep log -> CollectedLog (Path path, log))
       let children =
-        d.Children
+        describe.Children
         |> List.collect (loop path beforeHooks afterHooks)
       steps @ children
-    loop [] [] [] root
+    loop [] [] [] describe
 
   let runCollectedSteps (context: TestContext) (steps: CollectedStep list) (order: CollectedStep list -> CollectedStep list) =
     async {
@@ -348,10 +333,10 @@ let runTestSuiteWithContext (context: TestContext) (suite: Describe) (order: Col
   async {
     context.Reporter.Begin suite.TotalCount
     let steps = Runner.collectSteps suite
-    let! testResults = Runner.runCollectedSteps { context with Path = Path (context.Path.Value @ [suite.Name]) } steps order
-    context.Reporter.EndSuite(suite.Name, context.Path)
+    let! testResults = Runner.runCollectedSteps context steps order
+    context.Reporter.EndSuite(suite.Name, Path [suite.Name])
     context.Reporter.End testResults
-    return testResults |> Array.filter _.IsFailed
+    return testResults |> Array.filter _.Outcome.IsFailed
   }
 
 let runTestSuite (describe: Describe) =
