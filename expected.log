@@ -51,7 +51,6 @@ not ok should fail when adding incorrect numbers
   message: Expected 5 but got 4
   severity: fail
   ...
-
 [32mAsync Tests[0m
 [90mBefore each async test[0m
 [32m  ✅ passed: should run an async test[0m
