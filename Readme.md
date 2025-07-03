@@ -14,6 +14,7 @@
 - Refactoring for improved extensibility.
   - Custom runner support has been added.
   - Test ordering is now customizable.
+  - See [Extending Sprout](#-extending-sprout) for more details.
 
 ## ✅ Features
 
