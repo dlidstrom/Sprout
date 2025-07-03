@@ -102,9 +102,8 @@ let asyncSuite = describe "Async Tests" {
 
   // create a custom runner that runs tests in parallel
   let silentTapReporter = {
-    new Reporters.TapReporter()
-      with
-        override _.ReportResult(_, _) = () }
+    new Reporters.TapReporter() with
+      override _.ReportResult(_, _) = () }
   let parallelRunner = {
     new DefaultRunner(silentTapReporter, id) with
       override _.SequenceAsync args = Async.Parallel args }

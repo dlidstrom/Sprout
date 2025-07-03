@@ -208,7 +208,7 @@ example is to modify the default runner to run tests in parallel:
 
 ```fsharp
 let parallelRunner = {
-  new DefaultRunner(silentTapReporter, id) with
+  new DefaultRunner(Reporters.TapReporter(), id) with
     override _.SequenceAsync args = Async.Parallel args }
 runTestSuiteCustom
   parallelRunner
@@ -217,6 +217,15 @@ runTestSuiteCustom
 ```
 
 ---
+
+### 🏗️ Testing Sprout Itself
+
+Sprout is tested using [Bash Automated Testing System](https://github.com/bats-core/bats-core).
+You can run the tests using the following command:
+
+```bash
+bats .
+```
 
 ### 📦 Package Info
 
