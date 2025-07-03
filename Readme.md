@@ -9,25 +9,32 @@
 [![Build](https://github.com/dlidstrom/Sprout/actions/workflows/build.yml/badge.svg)](https://github.com/dlidstrom/Sprout/actions/workflows/build.yml)
 [![NuGet version](https://badge.fury.io/nu/dlidstrom.Sprout.svg)](https://badge.fury.io/nu/dlidstrom.Sprout)
 
+🔥 Latest news
+
+- Refactoring for improved extensibility.
+  - Custom runner support has been added.
+  - Test ordering is now customizable.
+  - See [Extending Sprout](#-extending-sprout) for more details.
+
 ## ✅ Features
 
-* Minimalist & expressive BDD-style syntax
-* Nestable `describe` blocks for organizing tests to any depth or complexity
-* Computation expressions for `it`, `beforeEach`, `afterEach`
-* Asynchronous blocks supported
-* Pending tests support
-* Logging for improved traceability
-* Built-in assertions: `shouldEqual`, `shouldBeTrue`, `shouldBeFalse`
-  * These go along way to making your tests readable and expressive due to the
+- Minimalist & expressive BDD-style syntax
+- Nestable `describe` blocks for organizing tests to any depth or complexity
+- Computation expressions for `it`, `beforeEach`, `afterEach`
+- Asynchronous blocks supported
+- Pending tests support
+- Logging for improved traceability
+- Built-in assertions: `shouldEqual`, `shouldBeTrue`, `shouldBeFalse`
+  - These go along way to making your tests readable and expressive due to the
     descriptive text that goes along with each `describe` block and `it` test
     case. Note that you may use any exception-based constraints library if
     desired ([FsUnit.Light](https://github.com/Lanayx/FsUnit.Light) works
     beautifully).
-* Support for parameterized tests using normal F# loops within `describe` blocks
-* Pluggable reporters (console, silent, TAP, JSON)
-* Built for F# — simple and idiomatic
-  * No need for `<|` or functions wrapped in parentheses!
-  * No need for complex combination of attributes - it's just all F# code!
+- Support for parameterized tests using normal F# loops within `describe` blocks
+- Pluggable reporters (console, silent, TAP, JSON)
+- Built for F# — simple and idiomatic
+  - No need for `<|` or functions wrapped in parentheses!
+  - No need for complex combination of attributes - it's just all F# code!
 
 Sprout provides a clean API for structuring tests. There are a minimum of
 abstractions. `describe` blocks may be nested to any suitable depth. It is all
@@ -47,6 +54,8 @@ dotnet add package dlidstrom.Sprout
 ### 🧪 Example Test
 
 ```fsharp
+#load "Sprout.fs"
+
 open Sprout
 
 let suite = describe "A test suite" {
@@ -116,8 +125,11 @@ let suite = describe "A test suite" {
   }
 }
 
-// Run the test suite asynchronously
-runTestSuite suite
+runTestSuiteCustom
+  // id is used to order the tests (it blocks)
+  // you can specify a custom ordering function if needed
+  (DefaultRunner(Reporters.ConsoleReporter("v", "x", "?", "  "), id))
+  suite
 |> Async.RunSynchronously
 ```
 
@@ -135,16 +147,16 @@ Output:
 | `it` | Imperative | Any F# expressions, but typically exception-based assertions |
 | `beforeEach`, `afterEach` | Imperative | Hook functions that run before and after test cases, respectively |
 
-* **`describe`** - used to define a test suite, or a group of tests. Use the
+- **`describe`** - used to define a test suite, or a group of tests. Use the
   descriptive text to create descriptive sentences of expected behaviour.
-* **`it`** - used to define test assertions, along with a descriptive text to
+- **`it`** - used to define test assertions, along with a descriptive text to
   define the expected behaviour
-* **`beforeEach`/`afterEach`** - hook functions that run before and after test
+- **`beforeEach`/`afterEach`** - hook functions that run before and after test
   cases, respectively
-* **`pending`** - used to denote a pending test case
-* **`info`/`debug`** - tracing functions that may be used inside hook functions
+- **`pending`** - used to denote a pending test case
+- **`info`/`debug`** - tracing functions that may be used inside hook functions
   and `it` blocks
-* **`Info`/`Debug`** - constructor functions that provide tracing inside
+- **`Info`/`Debug`** - constructor functions that provide tracing inside
   `describe` blocks
 
 > Tracing works slightly different in `describe` blocks due to limitations of me
@@ -158,24 +170,28 @@ You can plug in your own reporter:
 
 ```fsharp
 type MyCustomReporter() =
-  interface ITestReporter with
-    member _.Begin(totalCount) = ...
-    member _.BeginSuite(name, path) = ...
-    member _.ReportResult(result, path) = ...
-    member _.EndSuite(name, path) = ...
-    member _.Info(message, path) = ...
-    member _.Debug(message, path) = ...
-    member _.End(testResults) = ...
+  inherit TestReporter()
+  with
+    override _.Begin(totalCount) = ...
+    override _.BeginSuite(name, path) = ...
+    override _.ReportResult(result, path) = ...
+    override _.EndSuite(name, path) = ...
+    override _.Info(message, path) = ...
+    override _.Debug(message, path) = ...
+    override _.End(testResults) = ...
 ```
 
 Use it like this:
 
 ```fsharp
-let reporter = MyCustomReporter() :> ITestReporter
+let reporter = MyCustomReporter()
+
 let failedCount =
-  runTestSuiteWithContext
+  runTestSuiteCustom
+    // id is used to order the tests (it blocks)
+    // you can specify a custom ordering function if needed
+    (DefaultRunner(reporter, id))
     suite
-    { TestContext.New with Reporter = reporter }
   |> Async.RunSynchronously
 ```
 
@@ -187,6 +203,30 @@ Available reporters (available in the `Sprout.Reporters` namespace):
 | `TapReporter` | Outputs test results in TAP format |
 
 ---
+
+It is also possible to modify the default or create your own runner. A simple
+example is to modify the default runner to run tests in parallel:
+
+```fsharp
+let parallelRunner = {
+  new DefaultRunner(Reporters.TapReporter(), id) with
+    override _.SequenceAsync args = Async.Parallel args }
+runTestSuiteCustom
+  parallelRunner
+  suite
+|> Async.RunSynchronously
+```
+
+---
+
+### 🏗️ Testing Sprout Itself
+
+Sprout is tested using [Bash Automated Testing System](https://github.com/bats-core/bats-core).
+You can run the tests using the following command:
+
+```bash
+bats .
+```
 
 ### 📦 Package Info
 

@@ -69,7 +69,9 @@ let suite = describe "A test suite" {
   }
 }
 
-runTestSuiteWithContext
-  { TestContext.New with Reporter = Reporters.ConsoleReporter("v", "x", "?", "  ") :> ITestReporter }
+runTestSuiteCustom
+  // id is used to order the tests (it blocks)
+  // you can specify a custom ordering function if needed
+  (DefaultRunner(Reporters.ConsoleReporter("v", "x", "?", "  "), id))
   suite
 |> Async.RunSynchronously
