@@ -1,3 +1,12 @@
+[32mMain Suite[0m
+  [32mSuite 1[0m
+  [32mSuite 2[0m
+  [90mBefore each test in Suite 2[0m
+  [37mThis test passes in Suite 2[0m
+  [32m  ✅ passed: should pass in Suite 2[0m
+All tests passed!
+Summary: 1 passed, 0 failed, 0 pending
+Total time: 00:00:00.0078413
 [32mA larger test suite[0m
 [37mTop level info message[0m
 [90mBefore each test[0m
@@ -33,7 +42,7 @@ There were 2 test failures:
 - [31mA larger test suite / should fail - Intentional failure[0m
 - [31mA larger test suite / Arithmetic / Faulty Addition / should fail when adding incorrect numbers - Expected 5 but got 4[0m
 Summary: 4 passed, 2 failed, 1 pending
-Total time: 00:00:00.0124887
+Total time: 00:00:00.0048570
 TAP version 14
 1..7
 ok should pass
@@ -51,7 +60,6 @@ not ok should fail when adding incorrect numbers
   message: Expected 5 but got 4
   severity: fail
   ...
-
 [32mAsync Tests[0m
 [90mBefore each async test[0m
 [32m  ✅ passed: should run an async test[0m
@@ -60,4 +68,4 @@ not ok should fail when adding incorrect numbers
 There were 1 test failures:
 - [31mAsync Tests / should handle async failure - Intentional async failure[0m
 Summary: 1 passed, 1 failed, 0 pending
-Total time: 00:00:00.4115251
+Total time: 00:00:00.4131968

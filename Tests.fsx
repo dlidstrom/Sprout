@@ -12,7 +12,6 @@ let s2 = describe "Suite 2" {
     info "This test passes in Suite 2"
   }
 }
-runTestSuite (describe "Main Suite" { s1; s2 })
 
 let suite = describe "A larger test suite" {
   Info "Top level info message"
@@ -84,9 +83,10 @@ let asyncSuite = describe "Async Tests" {
 }
 
 [
+  runTestSuite (describe "Main Suite" { s1; s2 })
   runTestSuite suite
-  runTestSuiteWithContext
-    { TestContext.New with Reporter = Reporters.TapReporter() }
+  runTestSuiteCustom
+    (DefaultRunner(Reporters.TapReporter() :> ITestReporter, id))
     suite
   runTestSuite asyncSuite
 ]
