@@ -2,6 +2,12 @@
 
 open Sprout
 
+// This file contains a set of tests that demonstrate the features of the Sprout
+// testing framework. It includes both synchronous and asynchronous tests, nested
+// suites, and various assertions. The tests are designed to showcase the
+// capabilities of the framework, including setup and teardown functions, logging,
+// and custom runners.
+
 let s1 = describe "Suite 1" {}
 let s2 = describe "Suite 2" {
   beforeEach {
@@ -12,7 +18,6 @@ let s2 = describe "Suite 2" {
     info "This test passes in Suite 2"
   }
 }
-runTestSuite (describe "Main Suite" { s1; s2 })
 
 let suite = describe "A larger test suite" {
   Info "Top level info message"
@@ -84,10 +89,29 @@ let asyncSuite = describe "Async Tests" {
 }
 
 [
+  // run a suite on the fly, this one references the above suites
+  runTestSuite (describe "Main Suite" { s1; s2 })
+
+  // run the suite with a console reporter
   runTestSuite suite
-  runTestSuiteWithContext
-    { TestContext.New with Reporter = Reporters.TapReporter() }
+
+  // run the suite with a tap reporter
+  runTestSuiteCustom
+    (DefaultRunner(Reporters.TapReporter(), id))
     suite
+
+  // create a custom runner that runs tests in parallel
+  let silentTapReporter = {
+    new Reporters.TapReporter() with
+      override _.ReportResult(_, _) = () }
+  let parallelRunner = {
+    new DefaultRunner(silentTapReporter, id) with
+      override _.SequenceAsync args = Async.Parallel args }
+  runTestSuiteCustom
+    parallelRunner
+    suite
+
+  // run async tests
   runTestSuite asyncSuite
 ]
 |> Async.Sequential

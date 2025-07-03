@@ -30,7 +30,8 @@ jobs:
           fetch-depth: 0
       - name: Get version
         id: tag
-        uses: anothrNick/github-tag-action@1.73.0
+        #uses: anothrNick/github-tag-action@1.73.0
+        uses: rorybartie/github-tag-action@bugfix/duplicate-prefix-on-prerelease
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_PREFIX: v
@@ -86,12 +87,14 @@ jobs:
           dotnet build --configuration Release --no-restore -p:Version=${VERSION:1}
 
       - name: Add NuGet source
+        if: ${{ !github.event.pull_request }}
         env:
           NUGET_USERNAME: ${{ vars.NUGET_USERNAME }}
           NUGET_PASSWORD: ${{ secrets.NUGET_PASSWORD }}
         run: dotnet nuget add source --username ${NUGET_USERNAME} --password ${NUGET_PASSWORD} --store-password-in-clear-text --name nuget "https://nuget.pkg.github.com/${NUGET_USERNAME}/index.json"
 
       - name: Publish package
+        if: ${{ !github.event.pull_request }}
         env:
           VERSION: ${{ needs.get-version.outputs.tag }}
           NUGET_APIKEY: ${{ secrets.NUGET_APIKEY }}
