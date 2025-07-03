@@ -6,6 +6,10 @@ let mutable debug: string -> unit = ignore
 type LogLevel = Debug of string | Info of string
 
 type HookFunction = unit -> Async<unit>
+type HookFunctions = {
+  Before: HookFunction list
+  After: HookFunction list
+}
 type EachFunction =
   | Before of f: HookFunction
   | After of f: HookFunction
@@ -40,13 +44,18 @@ with
       (d.Steps |> List.sumBy (function ItStep _ -> 1 | _ -> 0)) +
       (d.Children |> List.sumBy count)
     count this
-  member this.CollectHooks() =
-    this.Each
-    |> List.fold (fun (be, af) hook ->
-      match hook with
-      | Before hookFunction -> hookFunction :: be, af
-      | After hookFunction -> be, hookFunction :: af
-    ) ([], [])
+  member this.HookFunctions =
+    let beforeHooks, afterHooks =
+      this.Each
+      |> List.fold (fun (be, af) hook ->
+        match hook with
+        | Before hookFunction -> hookFunction :: be, af
+        | After hookFunction -> be, hookFunction :: af
+      ) ([], [])
+    {
+      Before = List.rev beforeHooks
+      After = List.rev afterHooks
+    }
 
   static member New name = {
     Name = name
@@ -75,7 +84,7 @@ type TestResult = {
 }
 
 type CollectedStep =
-  | CollectedIt of Path * HookFunction list * HookFunction list * It
+  | CollectedIt of Path * HookFunctions * It
   | CollectedLog of Path * LogLevel
 
 type CollectedDescribe = {
@@ -246,7 +255,7 @@ module Reporters =
 type Runner() =
   abstract member Run: Describe -> Async<TestResult[]>
   abstract member CollectDescribes: Describe -> CollectedDescribe
-  abstract member RunTestCase: Path -> It -> HookFunction list -> HookFunction list -> Async<TestResult>
+  abstract member RunTestCase: Path -> It -> HookFunctions -> Async<TestResult>
   abstract member RunCollectedDescribe: CollectedDescribe -> Async<TestResult[]>
   abstract member SequenceAsync: Async<'T> list -> Async<'T array>
 
@@ -266,28 +275,30 @@ type DefaultRunner(reporter: TestReporter, order: StepsOrderingDelegate) =
       return testResults
     }
   override _.CollectDescribes describe =
-    let rec loop parentPath parentBefore parentAfter (d: Describe) =
-      let beforeHooks, afterHooks = d.CollectHooks()
-      let beforeHooks = List.rev beforeHooks @ parentBefore
-      let afterHooks = parentAfter @ List.rev afterHooks
+    let rec loop parentPath parentHookFunctions (d: Describe) =
+      let hookFunctions = d.HookFunctions
+      let hookFunctions' = {
+        Before = parentHookFunctions.Before @ hookFunctions.Before
+        After = hookFunctions.After @ parentHookFunctions.After
+      }
       let path = parentPath @ [d.Name]
       let steps =
         d.Steps
         |> List.map (function
-          | ItStep it -> CollectedIt (Path path, beforeHooks, afterHooks, it)
+          | ItStep it -> CollectedIt (Path path, hookFunctions', it)
           | LogStatementStep log -> CollectedLog (Path path, log))
       let children =
         d.Children
-        |> List.map (loop path beforeHooks afterHooks)
+        |> List.map (loop path hookFunctions')
       {
           Name = d.Name
           Path = Path path
           Steps = steps
           Children = children
       }
-    loop [] [] [] describe
+    loop [] { Before = []; After = [] } describe
 
-  override _.RunTestCase(path: Path) (testCase: It) (beforeHooks: HookFunction list) (afterHooks: HookFunction list): Async<TestResult> =
+  override _.RunTestCase(path: Path) (testCase: It) hookFunctions: Async<TestResult> =
     async {
       // setup logging functions
       let info', debug' = info, debug
@@ -296,7 +307,7 @@ type DefaultRunner(reporter: TestReporter, order: StepsOrderingDelegate) =
       let mutable logs = []
       info <- fun s -> logs <- Info s :: logs
       debug <- fun s -> logs <- Debug s :: logs
-      for hookFunction in beforeHooks do
+      for hookFunction in hookFunctions.Before do
         do! hookFunction()
       let! result =
         match testCase.Body with
@@ -312,7 +323,7 @@ type DefaultRunner(reporter: TestReporter, order: StepsOrderingDelegate) =
           async {
             return Pending (path, testCase.Name)
           }
-      for hookFunction in afterHooks do
+      for hookFunction in hookFunctions.After do
         do! hookFunction()
       return {
         Outcome = result
@@ -327,9 +338,9 @@ type DefaultRunner(reporter: TestReporter, order: StepsOrderingDelegate) =
         cd.Steps
         |> order
         |> List.map (function
-          | CollectedIt (path, beforeHooks, afterHooks, it) ->
+          | CollectedIt (path, hookFunctions, it) ->
             async {
-              let! result = this.RunTestCase path it beforeHooks afterHooks
+              let! result = this.RunTestCase path it hookFunctions
               for log in result.Logs do
                 match log with
                 | Info message -> reporter.Info(message, path)
@@ -365,7 +376,7 @@ let runTestSuiteCustom (runner: Runner) (describe: Describe) =
 
 let runTestSuite (describe: Describe) =
   async {
-    let reporter = Reporters.ConsoleReporter() :> TestReporter
+    let reporter = Reporters.ConsoleReporter()
     return! runTestSuiteCustom (DefaultRunner(reporter, id)) describe
   }
 
