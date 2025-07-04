@@ -24,7 +24,7 @@
 - Asynchronous blocks supported
 - Pending tests support
 - Logging for improved traceability
-- Built-in assertions: `shouldEqual`, `shouldBeTrue`, `shouldBeFalse`
+- Built-in assertions: `shouldEqual`, `shouldNotEqual`, `shouldBeTrue`, `shouldBeFalse`
   - These go along way to making your tests readable and expressive due to the
     descriptive text that goes along with each `describe` block and `it` test
     case. Note that you may use any exception-based constraints library if
