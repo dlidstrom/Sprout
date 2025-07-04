@@ -25,7 +25,7 @@
 - Pending tests support
 - Logging for improved traceability
 - Built-in assertions: `shouldEqual`, `shouldNotEqual`, `shouldBeTrue`, `shouldBeFalse`
-  - These go along way to making your tests readable and expressive due to the
+  - These go a long way towards making your tests readable and expressive due to the
     descriptive text that goes along with each `describe` block and `it` test
     case. Note that you may use any exception-based constraints library if
     desired ([FsUnit.Light](https://github.com/Lanayx/FsUnit.Light) works
