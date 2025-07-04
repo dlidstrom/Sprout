@@ -217,15 +217,31 @@ runTestSuiteCustom
 |> Async.RunSynchronously
 ```
 
+This is the runner abstract class:
+
+```fsharp
+[<AbstractClass>]
+type Runner() =
+  abstract member Run: Describe -> Async<TestResult[]>
+  abstract member CollectDescribes: Describe -> CollectedDescribe
+  abstract member RunTestCase: Path -> It -> HookFunctions -> Async<TestResult>
+  abstract member RunCollectedDescribe: CollectedDescribe -> Async<TestResult[]>
+  abstract member SequenceAsync: Async<'T> list -> Async<'T array>
+```
+
 ---
 
 ### 🏗️ Testing Sprout Itself
 
 Sprout is tested using [Bash Automated Testing System](https://github.com/bats-core/bats-core).
-You can run the tests using the following command:
+Tests are run using the following command:
 
 ```bash
-bats .
+$ bats .
+./test.bats
+ ✓ Tests.fsx
+
+1 test, 0 failures
 ```
 
 ### 📦 Package Info
