@@ -34,7 +34,7 @@
 - Pluggable reporters (console, silent, TAP, JSON)
 - Built for F# — simple and idiomatic
   - No need for `<|` or functions wrapped in parentheses!
-  - No need for complex combination of attributes - it's just all F# code!
+  - No need for complex combinations of attributes - it's just all F# code!
 
 Sprout provides a clean API for structuring tests. There are a minimum of
 abstractions. `describe` blocks may be nested to any suitable depth. It is all
@@ -148,7 +148,7 @@ Output:
 | `beforeEach`, `afterEach` | Imperative | Hook functions that run before and after test cases, respectively |
 
 - **`describe`** - used to define a test suite, or a group of tests. Use the
-  descriptive text to create descriptive sentences of expected behaviour.
+  text to create descriptive sentences of expected behaviour.
 - **`it`** - used to define test assertions, along with a descriptive text to
   define the expected behaviour
 - **`beforeEach`/`afterEach`** - hook functions that run before and after test
@@ -205,7 +205,8 @@ Available reporters (available in the `Sprout.Reporters` namespace):
 ---
 
 It is also possible to modify the default or create your own runner. A simple
-example is to modify the default runner to run tests in parallel:
+example is to modify the default runner to run tests in parallel, or run a
+subset of tests:
 
 ```fsharp
 let parallelRunner = {
