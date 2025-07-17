@@ -253,3 +253,7 @@ $ bats .
 | Target  | .NET Standard 2.0.          |
 | License | MIT                         |
 | Author  | Daniel Lidström             |
+
+### 💫 Stargazers over time
+
+[![Stargazers over time](https://starchart.cc/dlidstrom/Sprout.svg?variant=adaptive)](https://starchart.cc/dlidstrom/Sprout)
