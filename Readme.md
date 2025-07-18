@@ -190,6 +190,8 @@ let failedCount =
   runTestSuiteCustom
     // id is used to order the tests (it blocks)
     // you can specify a custom ordering function if needed
+    // advanced use cases might run earlier failed
+    // tests first
     (DefaultRunner(reporter, id))
     suite
   |> Async.RunSynchronously
@@ -249,7 +251,7 @@ $ bats .
 
 |         |                             |
 | ------- | --------------------------- |
-| NuGet   | [`Sprout`](https://www.nuget.org/packages/dlidstrom.Sprout) |
+| NuGet   | [`dlidstrom.Sprout`](https://www.nuget.org/packages/dlidstrom.Sprout) |
 | Target  | .NET Standard 2.0.          |
 | License | MIT                         |
 | Author  | Daniel Lidström             |
