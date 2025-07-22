@@ -37,8 +37,8 @@
   - No need for complex combinations of attributes - it's all just F# code!
 
 Sprout provides a clean API for structuring tests. There are a minimum of
-abstractions. `describe` blocks may be nested to any suitable depth. It is all
-just a matter of *composing* the building blocks. Just like you would expect
+abstractions. `describe` blocks may be nested to any suitable depth. It is
+only a matter of *composing* the building blocks. Just like you would expect
 coming from a functional programming background.
 
 ---
