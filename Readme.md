@@ -34,7 +34,7 @@
 - Pluggable reporters (console, silent, TAP, JSON)
 - Built for F# — simple and idiomatic
   - No need for `<|` or functions wrapped in parentheses!
-  - No need for complex combinations of attributes - it's just all F# code!
+  - No need for complex combinations of attributes - it's all just F# code!
 
 Sprout provides a clean API for structuring tests. There are a minimum of
 abstractions. `describe` blocks may be nested to any suitable depth. It is all
