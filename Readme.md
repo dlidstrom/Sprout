@@ -125,12 +125,35 @@ let suite = describe "A test suite" {
   }
 }
 
-runTestSuiteCustom
-  // id is used to order the tests (it blocks)
-  // you can specify a custom ordering function if needed
-  (DefaultRunner(Reporters.ConsoleReporter("v", "x", "?", "  "), id))
+let run() =
+  (*
+  // simple way to run the tests and get the number of failed tests:
+  describe "System Specs" {
+    suite // list your suites here
+  }
+  |> runTestSuite
+  |> Async.RunSynchronously
+  |> Array.filter _.Outcome.IsFailed
+  |> Array.length
+  *)
+
+  // more control over the test run using a custom reporter
   suite
-|> Async.RunSynchronously
+  |> runTestSuiteCustom
+    // id is used to order the tests (it blocks)
+    // you can specify a custom ordering function if needed
+    (DefaultRunner(Reporters.ConsoleReporter("v", "x", "?", "  "), id))
+  |> Async.RunSynchronously
+  |> Array.filter _.Outcome.IsFailed
+  |> Array.length
+
+#if !INTERACTIVE
+// run tests as a console application
+[<EntryPoint>]
+let main _ = run()
+#else
+do run() |> ignore
+#endif
 ```
 
 Output:
@@ -161,6 +184,11 @@ Output:
 
 > Tracing works slightly different in `describe` blocks due to limitations of me
 > (most likely) and/or F# computation expressions.
+
+### ⚙️ Running Tests
+
+- **`runTestSuite`** - runs a test suite using the default runner and console reporter
+- **`runTestSuiteCustom`** - runs a test suite using a custom runner and reporter
 
 ---
 
