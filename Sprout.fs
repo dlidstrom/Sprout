@@ -115,6 +115,7 @@ module Builders =
       do! b
     }
     member _.Bind(m: Async<'T>, f: 'T -> Async<unit>) = async.Bind(m, f)
+    member _.Using(resource: 'T when 'T :> System.IDisposable, binder: 'T -> Async<unit>) = async.Using(resource, binder)
     member _.Run(f: Async<unit>) = factory (fun() -> f)
 
   type ItBuilder(name: string) =
@@ -127,6 +128,7 @@ module Builders =
       do! b
     }
     member _.Bind(m: Async<'T>, f: 'T -> Async<unit>) = async.Bind(m, f)
+    member _.Using(resource: 'T when 'T :> System.IDisposable, binder: 'T -> Async<unit>) = async.Using(resource, binder)
     member _.Run(f: Async<unit>) = It.Active name (fun () -> f)
 
   type DescribeBuilder(name) =
