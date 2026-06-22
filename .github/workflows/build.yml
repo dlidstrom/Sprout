@@ -91,7 +91,7 @@ jobs:
         uses: NuGet/login@v1
         id: login
         with:
-          user: ${{ secrets.NUGET_USER }}
+          user: dlidstrom
 
       - name: Publish package to NuGet.org
         if: ${{ github.ref == 'refs/heads/main' }}
