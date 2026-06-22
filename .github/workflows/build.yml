@@ -2,10 +2,8 @@ name: Build
 
 on:
   workflow_dispatch:
-
   push:
     branches: [main]
-
   pull_request:
     branches: [main]
 
@@ -14,6 +12,7 @@ permissions:
   issues: write
   checks: write
   pull-requests: write
+  id-token: write  # Required for OIDC
 
 jobs:
   get-version:
@@ -30,7 +29,6 @@ jobs:
           fetch-depth: 0
       - name: Get version
         id: tag
-        #uses: anothrNick/github-tag-action@1.73.0
         uses: rorybartie/github-tag-action@bugfix/duplicate-prefix-on-prerelease
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -41,6 +39,7 @@ jobs:
           PRERELEASE: ${{ !!github.event.pull_request }}
           PRERELEASE_SUFFIX: prerelease
           VERBOSE: true
+
   build:
     runs-on: ubuntu-latest
     concurrency:
@@ -86,17 +85,18 @@ jobs:
         run: |
           dotnet build --configuration Release --no-restore -p:Version=${VERSION:1}
 
-      - name: Add NuGet source
-        if: ${{ !github.event.pull_request }}
-        env:
-          NUGET_USERNAME: ${{ vars.NUGET_USERNAME }}
-          NUGET_PASSWORD: ${{ secrets.NUGET_PASSWORD }}
-        run: dotnet nuget add source --username ${NUGET_USERNAME} --password ${NUGET_PASSWORD} --store-password-in-clear-text --name nuget "https://nuget.pkg.github.com/${NUGET_USERNAME}/index.json"
+      # Trusted Publishing with OIDC (runs on main branch pushes)
+      - name: NuGet login (OIDC → temp API key)
+        if: ${{ github.ref == 'refs/heads/main' }}
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
 
-      - name: Publish package
-        if: ${{ !github.event.pull_request }}
-        env:
-          VERSION: ${{ needs.get-version.outputs.tag }}
-          NUGET_APIKEY: ${{ secrets.NUGET_APIKEY }}
+      - name: Publish package to NuGet.org
+        if: ${{ github.ref == 'refs/heads/main' }}
         run: |
-          dotnet nuget push "bin/Release/*.nupkg" --api-key ${NUGET_APIKEY} --source https://api.nuget.org/v3/index.json --skip-duplicate
+          dotnet nuget push "bin/Release/*.nupkg" \
+            --api-key ${{ steps.login.outputs.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
